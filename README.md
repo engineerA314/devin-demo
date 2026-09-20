@@ -81,16 +81,19 @@ alert from silently becoming an unverified code change.
 
 ## Quick start in preview mode
 
-Preview mode renders the complete Luma product and Incident Resolution without
-requiring Superset credentials.
+Preview mode renders the three demo surfaces on separate URLs without requiring
+Superset credentials.
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-Open [Luma](http://localhost:3000) and choose **Incident Resolution**. The
-controller health endpoint is [http://localhost:8000/health](http://localhost:8000/health).
+- Customer-facing Luma SaaS: [http://localhost:3000/customer-analytics](http://localhost:3000/customer-analytics)
+- Devin Incident Autopilot: [http://localhost:3000/incident-resolution](http://localhost:3000/incident-resolution)
+- Alert event generator: [http://localhost:3000/incident-simulator](http://localhost:3000/incident-simulator)
+
+The controller health endpoint is [http://localhost:8000/health](http://localhost:8000/health).
 
 Without Devin credentials, the resolution console remains read-only.
 
@@ -159,14 +162,17 @@ docker compose up --build
 
 - Superset: [http://localhost:9001](http://localhost:9001), local credentials
   `admin` / `admin`
-- Luma: [http://localhost:3000](http://localhost:3000)
+- Luma: [http://localhost:3000/customer-analytics](http://localhost:3000/customer-analytics)
+- Incident Autopilot: [http://localhost:3000/incident-resolution](http://localhost:3000/incident-resolution)
+- Signal simulator: [http://localhost:3000/incident-simulator](http://localhost:3000/incident-simulator)
 
 Set `SUPERSET_REPO=/absolute/path/to/superset` when the repositories are not
 siblings.
 
 ## Trigger the workflow
 
-Open **Run Simulation** and select **Dispatch incident**. The controller records
+Open the [Incident Signal Lab](http://localhost:3000/incident-simulator) and
+select **Dispatch incident**. The controller records
 the incident and sends this Datadog-compatible alert shape to the native Devin
 webhook. Progress then appears under **Incident Resolution**:
 

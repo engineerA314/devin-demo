@@ -1,14 +1,19 @@
 import {
-  Bell,
+  Activity,
+  ArrowLeft,
   BarChart3,
+  Bell,
   CalendarDays,
   ChevronDown,
-  PlayCircle,
+  FileBarChart,
+  FlaskConical,
+  HeartPulse,
   Menu,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
+  Users,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import './App.css'
@@ -17,25 +22,37 @@ import { EmbeddedSupersetDashboard } from './components/EmbeddedSupersetDashboar
 import { OperationsDashboard } from './components/OperationsDashboard'
 import { SimulationPage } from './components/SimulationPage'
 
-const navigation = [
-  { label: 'Customer Analytics', icon: BarChart3, view: 'overview' },
-  { label: 'Incident Resolution', icon: ShieldCheck, view: 'operations' },
-  { label: 'Run Simulation', icon: PlayCircle, view: 'simulation' },
-]
-
-type View = 'overview' | 'operations' | 'simulation'
-
-function viewFromHash(): View {
-  if (window.location.hash.startsWith('#operations')) return 'operations'
-  if (window.location.hash === '#simulation') return 'simulation'
-  return 'overview'
-}
+migrateLegacyHashRoute()
 
 function App() {
+  const path = window.location.pathname.replace(/\/$/, '') || '/'
+  const product = path.startsWith('/incident-resolution')
+    ? 'incident'
+    : path === '/incident-simulator'
+      ? 'simulator'
+      : 'customer'
+
+  useEffect(() => {
+    document.title = {
+      customer: 'Luma · Customer Intelligence',
+      incident: 'Incident Autopilot · Devin Control Plane',
+      simulator: 'Incident Signal Lab · Demo Event Generator',
+    }[product]
+  }, [product])
+
+  if (product === 'incident') {
+    return <IncidentResolutionProduct />
+  }
+  if (product === 'simulator') {
+    return <IncidentSimulator />
+  }
+  return <CustomerAnalyticsProduct />
+}
+
+function CustomerAnalyticsProduct() {
   const [config, setConfig] = useState<EmbedConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [view, setView] = useState<View>(viewFromHash)
 
   useEffect(() => {
     getEmbedConfig()
@@ -48,27 +65,10 @@ function App() {
       })
   }, [])
 
-  useEffect(() => {
-    const syncView = () => setView(viewFromHash())
-    window.addEventListener('hashchange', syncView)
-    window.addEventListener('popstate', syncView)
-    return () => {
-      window.removeEventListener('hashchange', syncView)
-      window.removeEventListener('popstate', syncView)
-    }
-  }, [])
-
-  function selectView(nextView: View) {
-    setView(nextView)
-    const nextHash = nextView === 'overview' ? '' : `#${nextView}`
-    window.history.pushState(null, '', `${window.location.pathname}${window.location.search}${nextHash}`)
-    setSidebarOpen(false)
-  }
-
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--customer">
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
-        <div className="brand">
+        <a className="brand" href="/customer-analytics">
           <div className="brand__mark" aria-hidden="true">
             <Sparkles size={18} strokeWidth={2.4} />
           </div>
@@ -76,34 +76,29 @@ function App() {
             <div className="brand__name">Luma</div>
             <div className="brand__descriptor">Customer Intelligence</div>
           </div>
-        </div>
+        </a>
 
-        <nav className="navigation" aria-label="Main navigation">
-          <span className="navigation__eyebrow">Workspace</span>
-          {navigation.map(item => {
-            const Icon = item.icon
-            return (
-              <button
-                className={`navigation__item ${item.view === view ? 'navigation__item--active' : ''}`}
-                key={item.label}
-                onClick={() => {
-                  selectView(item.view as View)
-                }}
-                type="button"
-              >
-                <Icon size={18} />
-                {item.label}
-              </button>
-            )
-          })}
+        <nav className="navigation" aria-label="Luma navigation">
+          <span className="navigation__eyebrow">Analytics</span>
+          <a className="navigation__item navigation__item--active" href="/customer-analytics">
+            <BarChart3 size={18} /> Analytics overview
+          </a>
+          <span className="navigation__item navigation__item--disabled">
+            <HeartPulse size={18} /> Customer health
+          </span>
+          <span className="navigation__item navigation__item--disabled">
+            <Users size={18} /> Segments
+          </span>
+          <span className="navigation__item navigation__item--disabled">
+            <FileBarChart size={18} /> Reports
+          </span>
         </nav>
 
         <div className="sidebar__footer">
           <button className="navigation__item" type="button">
-            <Settings size={18} />
-            Settings
+            <Settings size={18} /> Settings
           </button>
-          <span className="sidebar__tagline">Higher uptime.<br />Brighter customers.</span>
+          <span className="sidebar__tagline">Higher insight.<br />Brighter customers.</span>
         </div>
       </aside>
 
@@ -126,44 +121,30 @@ function App() {
           >
             <Menu size={20} />
           </button>
-          {view === 'overview' ? (
-            <div className="search">
-              <Search size={17} />
-              <span>Search customers, reports, and metrics</span>
-              <kbd>⌘ K</kbd>
-            </div>
-          ) : (
-            <div className="topbar__status"><span /> All systems operational</div>
-          )}
+          <div className="search">
+            <Search size={17} />
+            <span>Search customers, reports, and metrics</span>
+            <kbd>⌘ K</kbd>
+          </div>
           <div className="topbar__actions">
-            {view === 'overview' && (
-              <>
-                <button className="icon-button" aria-label="Notifications" type="button">
-                  <Bell size={19} />
-                  <span className="notification-dot" />
-                </button>
-                <button className="date-control" type="button">
-                  <CalendarDays size={17} />
-                  Last 30 days
-                  <ChevronDown size={15} />
-                </button>
-              </>
-            )}
-            {view !== 'overview' && <span className="topbar__avatar">JP</span>}
+            <button className="icon-button" aria-label="Notifications" type="button">
+              <Bell size={19} />
+              <span className="notification-dot" />
+            </button>
+            <button className="date-control" type="button">
+              <CalendarDays size={17} />
+              Last 30 days
+              <ChevronDown size={15} />
+            </button>
           </div>
         </header>
 
-        {view === 'operations' ? (
-          <OperationsDashboard />
-        ) : view === 'simulation' ? (
-          <SimulationPage onViewResolution={() => selectView('operations')} />
-        ) : (
         <div className="page">
           <div className="page-heading">
             <div>
               <div className="eyebrow">Analytics overview</div>
               <h1>Good morning, Jun</h1>
-              <p>Track the health and growth of Acme's customer base.</p>
+              <p>Track the health and growth of Acme&apos;s customer base.</p>
             </div>
             <div className="status-pill">
               <span className="status-pill__dot" />
@@ -200,10 +181,64 @@ function App() {
             <span>Privacy · Status · Documentation</span>
           </footer>
         </div>
-        )}
       </main>
     </div>
   )
+}
+
+function IncidentResolutionProduct() {
+  return (
+    <div className="product-shell product-shell--incident">
+      <header className="product-header">
+        <a className="product-brand" href="/incident-resolution">
+          <span><ShieldCheck size={19} /></span>
+          <div><strong>Incident Autopilot</strong><small>Devin control plane</small></div>
+        </a>
+        <div className="product-header__actions">
+          <span className="product-system-status"><i /> All systems operational</span>
+          <a className="product-utility-link" href="/incident-simulator">
+            <FlaskConical size={15} /> Open signal simulator
+          </a>
+          <span className="topbar__avatar">JP</span>
+        </div>
+      </header>
+      <main className="product-main"><OperationsDashboard /></main>
+    </div>
+  )
+}
+
+function IncidentSimulator() {
+  return (
+    <div className="product-shell product-shell--simulator">
+      <header className="product-header product-header--simulator">
+        <a className="product-brand" href="/incident-simulator">
+          <span><Activity size={19} /></span>
+          <div><strong>Incident Signal Lab</strong><small>Demo event generator</small></div>
+        </a>
+        <a className="product-utility-link" href="/incident-resolution">
+          <ArrowLeft size={15} /> Back to Incident Autopilot
+        </a>
+      </header>
+      <main className="simulator-main">
+        <SimulationPage onViewResolution={() => window.location.assign('/incident-resolution')} />
+      </main>
+    </div>
+  )
+}
+
+function migrateLegacyHashRoute() {
+  const { hash, pathname } = window.location
+  if (pathname !== '/') return
+  if (hash.startsWith('#operations/')) {
+    const id = hash.slice('#operations/'.length)
+    window.history.replaceState(null, '', `/incident-resolution/${id}`)
+  } else if (hash === '#operations') {
+    window.history.replaceState(null, '', '/incident-resolution')
+  } else if (hash === '#simulation') {
+    window.history.replaceState(null, '', '/incident-simulator')
+  } else {
+    window.history.replaceState(null, '', '/customer-analytics')
+  }
 }
 
 export default App

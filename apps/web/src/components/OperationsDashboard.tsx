@@ -51,7 +51,7 @@ export function OperationsDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<RunFilter>('all')
-  const [selectedRunId, setSelectedRunId] = useState(runIdFromHash)
+  const [selectedRunId, setSelectedRunId] = useState(runIdFromPath)
 
   const refresh = useCallback(async () => {
     try {
@@ -73,11 +73,9 @@ export function OperationsDashboard() {
   }, [refresh])
 
   useEffect(() => {
-    const syncSelection = () => setSelectedRunId(runIdFromHash())
-    window.addEventListener('hashchange', syncSelection)
+    const syncSelection = () => setSelectedRunId(runIdFromPath())
     window.addEventListener('popstate', syncSelection)
     return () => {
-      window.removeEventListener('hashchange', syncSelection)
       window.removeEventListener('popstate', syncSelection)
     }
   }, [])
@@ -99,12 +97,12 @@ export function OperationsDashboard() {
   }, [filter, query, runs])
 
   function openRun(run: ResolutionRun) {
-    window.history.pushState(null, '', `#operations/${encodeURIComponent(run.id)}`)
+    window.history.pushState(null, '', `/incident-resolution/${encodeURIComponent(run.id)}`)
     setSelectedRunId(run.id)
   }
 
   function closeRun() {
-    window.history.pushState(null, '', '#operations')
+    window.history.pushState(null, '', '/incident-resolution')
     setSelectedRunId(null)
   }
 
@@ -535,8 +533,8 @@ function MilestoneIcon({ kind }: { kind: ResolutionRun['milestones'][number]['ki
   return <CheckCircle2 size={14} />
 }
 
-function runIdFromHash(): string | null {
-  const match = window.location.hash.match(/^#operations\/(.+)$/)
+function runIdFromPath(): string | null {
+  const match = window.location.pathname.match(/^\/incident-resolution\/([^/]+)\/?$/)
   return match ? decodeURIComponent(match[1]) : null
 }
 

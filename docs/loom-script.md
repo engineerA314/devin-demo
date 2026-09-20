@@ -1,7 +1,7 @@
 # Five-minute Loom runbook
 
 Target length: **4:35**. Record at 1440p with the browser zoom around 90%.
-Keep these tabs ready: Luma dashboard, Incident Resolution, Devin Automations,
+Keep these tabs ready: Luma dashboard, Incident Autopilot, Signal Lab, Devin Automations,
 triage session, remediation session, GitHub issue #1, and GitHub PR #2.
 
 ## 0:00–0:40 — What: customer impact
@@ -24,7 +24,7 @@ triage session, remediation session, GitHub issue #1, and GitHub PR #2.
 
 ## 0:40–1:25 — How: trigger and architecture
 
-**Screen:** Run Simulation, then click **Dispatch incident** only
+**Screen:** Open the separate Incident Signal Lab URL, then click **Dispatch incident** only
 if a fresh run is desired. For the final recording, the completed incident can
 be shown without generating a duplicate issue.
 
