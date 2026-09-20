@@ -1,37 +1,41 @@
 import {
   Bell,
+  BarChart3,
   CalendarDays,
   ChevronDown,
-  CircleHelp,
-  LayoutDashboard,
-  LineChart,
+  PlayCircle,
   Menu,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
-  Users,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import './App.css'
 import { getEmbedConfig, type EmbedConfig } from './api'
 import { EmbeddedSupersetDashboard } from './components/EmbeddedSupersetDashboard'
 import { OperationsDashboard } from './components/OperationsDashboard'
+import { SimulationPage } from './components/SimulationPage'
 
 const navigation = [
-  { label: 'Overview', icon: LayoutDashboard, view: 'overview' },
-  { label: 'Revenue', icon: LineChart },
-  { label: 'Customers', icon: Users },
-  { label: 'Incident Autopilot', icon: ShieldCheck, view: 'operations' },
+  { label: 'Customer Analytics', icon: BarChart3, view: 'overview' },
+  { label: 'Incident Resolution', icon: ShieldCheck, view: 'operations' },
+  { label: 'Run Simulation', icon: PlayCircle, view: 'simulation' },
 ]
+
+type View = 'overview' | 'operations' | 'simulation'
+
+function viewFromHash(): View {
+  if (window.location.hash === '#operations') return 'operations'
+  if (window.location.hash === '#simulation') return 'simulation'
+  return 'overview'
+}
 
 function App() {
   const [config, setConfig] = useState<EmbedConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [view, setView] = useState<'overview' | 'operations'>(() =>
-    window.location.hash === '#operations' ? 'operations' : 'overview',
-  )
+  const [view, setView] = useState<View>(viewFromHash)
 
   useEffect(() => {
     getEmbedConfig()
@@ -43,6 +47,23 @@ function App() {
         )
       })
   }, [])
+
+  useEffect(() => {
+    const syncView = () => setView(viewFromHash())
+    window.addEventListener('hashchange', syncView)
+    window.addEventListener('popstate', syncView)
+    return () => {
+      window.removeEventListener('hashchange', syncView)
+      window.removeEventListener('popstate', syncView)
+    }
+  }, [])
+
+  function selectView(nextView: View) {
+    setView(nextView)
+    const nextHash = nextView === 'overview' ? '' : `#${nextView}`
+    window.history.pushState(null, '', `${window.location.pathname}${window.location.search}${nextHash}`)
+    setSidebarOpen(false)
+  }
 
   return (
     <div className="app-shell">
@@ -57,17 +78,8 @@ function App() {
           </div>
         </div>
 
-        <div className="workspace-switcher">
-          <div className="workspace-switcher__avatar">AC</div>
-          <div className="workspace-switcher__copy">
-            <span className="workspace-switcher__label">Workspace</span>
-            <strong>Acme, Inc.</strong>
-          </div>
-          <ChevronDown size={16} />
-        </div>
-
         <nav className="navigation" aria-label="Main navigation">
-          <span className="navigation__eyebrow">Analytics</span>
+          <span className="navigation__eyebrow">Workspace</span>
           {navigation.map(item => {
             const Icon = item.icon
             return (
@@ -75,10 +87,7 @@ function App() {
                 className={`navigation__item ${item.view === view ? 'navigation__item--active' : ''}`}
                 key={item.label}
                 onClick={() => {
-                  if (!item.view) return
-                  setView(item.view as 'overview' | 'operations')
-                  window.location.hash = item.view === 'operations' ? 'operations' : ''
-                  setSidebarOpen(false)
+                  selectView(item.view as View)
                 }}
                 type="button"
               >
@@ -91,21 +100,10 @@ function App() {
 
         <div className="sidebar__footer">
           <button className="navigation__item" type="button">
-            <CircleHelp size={18} />
-            Help & support
-          </button>
-          <button className="navigation__item" type="button">
             <Settings size={18} />
             Settings
           </button>
-          <div className="profile-card">
-            <div className="profile-card__avatar">JP</div>
-            <div>
-              <strong>Jun Park</strong>
-              <span>Admin</span>
-            </div>
-            <ChevronDown size={16} />
-          </div>
+          <span className="sidebar__tagline">Higher uptime.<br />Brighter customers.</span>
         </div>
       </aside>
 
@@ -128,26 +126,37 @@ function App() {
           >
             <Menu size={20} />
           </button>
-          <div className="search">
-            <Search size={17} />
-            <span>Search customers, reports, and metrics</span>
-            <kbd>⌘ K</kbd>
-          </div>
+          {view === 'overview' ? (
+            <div className="search">
+              <Search size={17} />
+              <span>Search customers, reports, and metrics</span>
+              <kbd>⌘ K</kbd>
+            </div>
+          ) : (
+            <div className="topbar__status"><span /> All systems operational</div>
+          )}
           <div className="topbar__actions">
-            <button className="icon-button" aria-label="Notifications" type="button">
-              <Bell size={19} />
-              <span className="notification-dot" />
-            </button>
-            <button className="date-control" type="button">
-              <CalendarDays size={17} />
-              Last 30 days
-              <ChevronDown size={15} />
-            </button>
+            {view === 'overview' && (
+              <>
+                <button className="icon-button" aria-label="Notifications" type="button">
+                  <Bell size={19} />
+                  <span className="notification-dot" />
+                </button>
+                <button className="date-control" type="button">
+                  <CalendarDays size={17} />
+                  Last 30 days
+                  <ChevronDown size={15} />
+                </button>
+              </>
+            )}
+            {view !== 'overview' && <span className="topbar__avatar">JP</span>}
           </div>
         </header>
 
         {view === 'operations' ? (
           <OperationsDashboard />
+        ) : view === 'simulation' ? (
+          <SimulationPage onViewResolution={() => selectView('operations')} />
         ) : (
         <div className="page">
           <div className="page-heading">

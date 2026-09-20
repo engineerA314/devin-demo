@@ -70,8 +70,9 @@ alert from silently becoming an unverified code change.
   `@superset-ui/embedded-sdk`
 - **Incident controller:** FastAPI, a persistent SQLite incident log, Devin API
   read model, native automation webhook dispatch, and GitHub artifact reads
-- **Incident Autopilot UI:** live incidents, active and completed sessions,
-  pull requests, success rate, and consumed ACUs
+- **Incident Resolution UI:** alert-to-issue and alert-to-PR lead time, an
+  artifact-linked timeline, verification evidence, failure signals, approval
+  state, and source health
 - **Automation as code:** idempotent scripts for two Devin Automations and a
   reusable Devin Cloud environment blueprint
 - **Local Superset:** a script that builds and starts the fork with an embedded
@@ -79,7 +80,7 @@ alert from silently becoming an unverified code change.
 
 ## Quick start in preview mode
 
-Preview mode renders the complete Luma product and Incident Autopilot without
+Preview mode renders the complete Luma product and Incident Resolution without
 requiring Superset credentials.
 
 ```bash
@@ -87,11 +88,10 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open [Luma](http://localhost:3000) and choose **Incident Autopilot**. The
+Open [Luma](http://localhost:3000) and choose **Incident Resolution**. The
 controller health endpoint is [http://localhost:8000/health](http://localhost:8000/health).
 
-Without Devin credentials, the console is read-only and the incident button is
-disabled.
+Without Devin credentials, the resolution console remains read-only.
 
 ## Connect Devin Cloud
 
@@ -165,9 +165,9 @@ siblings.
 
 ## Trigger the workflow
 
-Open **Incident Autopilot** and select **Simulate production incident**. The
-controller records the incident and sends this Datadog-compatible alert shape
-to the native Devin webhook:
+Open **Run Simulation** and select **Dispatch incident**. The controller records
+the incident and sends this Datadog-compatible alert shape to the native Devin
+webhook. Progress then appears under **Incident Resolution**:
 
 ```json
 {
@@ -206,16 +206,17 @@ The console answers the questions an engineering leader needs during rollout:
 
 | Signal | Meaning |
 | --- | --- |
-| Incidents | Alerts accepted and durably recorded |
-| Active Devins | Cloud workers currently investigating or fixing |
-| Completed sessions | Agent handoffs that reached a reviewable result |
-| Failed sessions | Runs that require operational attention |
-| Pull requests | Concrete remediation throughput |
-| Success rate | Completed runs divided by completed plus failed runs |
+| Alert → validated issue | Time until the alert becomes a reproducible engineering contract |
+| Alert → pull request | Time until a linked, reviewable remediation exists |
+| Tests passed | Verification reported by the remediation PR and Devin session |
+| Failed runs | Incident runs that require operational attention |
+| Approval pending | Review-ready PRs waiting at the human production gate |
+| Source health | Freshness and availability of Devin, GitHub, and Automations data |
 
-Production extensions would add mean time to validated issue, mean time to PR,
-CI outcome, human acceptance rate, rollback rate, and savings against historical
-on-call handling time.
+The current proof run reached a validated issue in **3m 34s**, opened its PR in
+**8m 26s**, and finished independent verification in **10m 15s**. Production
+extensions would add human acceptance rate, rollback rate, and savings against
+historical on-call handling time.
 
 ## Local development
 

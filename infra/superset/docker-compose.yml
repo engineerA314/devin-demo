@@ -4,7 +4,8 @@ x-superset-environment: &superset-environment
   DATABASE_DIALECT: sqlite
   SUPERSET__SQLALCHEMY_DATABASE_URI: sqlite:////tmp/superset.db
   SUPERSET__SQLALCHEMY_EXAMPLES_URI: sqlite:////tmp/examples.db
-  SUPERSET_CONFIG_PATH: /app/docker/pythonpath_dev/superset_config_docker_light.py
+  SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config_demo.py
+  DEVIN_DEMO_STATE_DIR: /tmp/superset-demo
   SUPERSET_SECRET_KEY: local-devin-demo-secret
   SUPERSET_FEATURE_EMBEDDED_SUPERSET: "true"
   ADMIN_PASSWORD: admin
@@ -39,11 +40,8 @@ services:
         superset init
 
         # Current master still asks for the removed countries.json example path.
-        # Keep the reproduction intact in the fork and provide only a runtime
-        # compatibility copy so Devin can remediate the source through a PR.
-        mkdir -p /app/superset/examples/countries.json
-        cp /app/superset/examples/world_health/data.parquet \
-          /app/superset/examples/countries.json/data.parquet
+        # A read-only bind mount below provides the existing parquet fixture at
+        # runtime while keeping the fork unchanged for Devin to remediate.
         python - <<'PY'
         from uuid import UUID
 
@@ -73,6 +71,10 @@ services:
 
         exec /app/docker/docker-bootstrap.sh app
     environment: *superset-environment
+    volumes:
+      - ./superset_config_demo.py:/app/pythonpath/superset_config_demo.py:ro
+      - ../../.state/superset:/tmp/superset-demo
+      - ${SUPERSET_REPO_PATH:-../../../superset}/superset/examples/world_health:/app/superset/examples/countries.json:ro
 
   superset-node-light:
     image: devin-superset-frontend:local

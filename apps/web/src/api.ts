@@ -19,6 +19,21 @@ export type OperationsOverview = {
     acusConsumed: number
     successRate: number
   }
+  summary: {
+    totalRuns: number
+    activeRuns: number
+    successfulRuns: number
+    failedRuns: number
+    approvalPending: number
+    medianTimeToIssueSeconds?: number
+    medianTimeToPrSeconds?: number
+  }
+  health: Array<{
+    name: string
+    status: 'healthy' | 'degraded'
+    detail: string
+  }>
+  runs: ResolutionRun[]
   incidents: Array<{
     id: string
     title: string
@@ -58,8 +73,89 @@ export type OperationsOverview = {
     labels: string[]
     createdAt: string
   }>
+  pullRequests: Array<PullRequestArtifact>
   generatedAt: string
   warnings: string[]
+}
+
+export type SessionArtifact = {
+  id: string
+  title?: string
+  status: string
+  statusDetail?: string
+  url: string
+  tags: string[]
+  acusConsumed: number
+  pullRequests: Array<{ pr_url: string; pr_state: string }>
+  createdAt: number
+  updatedAt: number
+  automationId?: string
+}
+
+export type IssueArtifact = {
+  number: number
+  title: string
+  state: string
+  url: string
+  labels: string[]
+  createdAt: string
+}
+
+export type PullRequestArtifact = {
+  number: number
+  title: string
+  state: string
+  url: string
+  createdAt: string
+  mergedAt?: string
+}
+
+export type ResolutionRun = {
+  id: string
+  title: string
+  service: string
+  severity: string
+  status: 'active' | 'complete' | 'failed'
+  outcome:
+    | 'alert_received'
+    | 'triaging'
+    | 'issue_created'
+    | 'remediating'
+    | 'pr_opened'
+    | 'ready_for_review'
+    | 'merged'
+    | 'failed'
+  detectedAt: string
+  completedAt?: string
+  humanAction: string
+  signals: {
+    errorRate: number
+    p95LatencyMs: number
+    affectedSessions: number
+  }
+  durations: {
+    toIssueSeconds?: number
+    toPrSeconds?: number
+    toVerificationSeconds?: number
+  }
+  verification: {
+    testsPassed?: string
+    buildPassed: boolean
+    source?: string
+  }
+  evidence: Array<{ label: string; detail: string }>
+  milestones: Array<{
+    kind: 'alert' | 'agent' | 'issue' | 'code' | 'pull_request' | 'verified'
+    label: string
+    occurredAt: string
+    elapsedSeconds?: number
+    url?: string
+  }>
+  triageSession?: SessionArtifact
+  remediationSession?: SessionArtifact
+  issue?: IssueArtifact
+  pullRequest?: PullRequestArtifact
+  errorDetail?: string
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'

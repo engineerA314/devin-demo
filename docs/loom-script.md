@@ -1,7 +1,7 @@
 # Five-minute Loom runbook
 
 Target length: **4:35**. Record at 1440p with the browser zoom around 90%.
-Keep these tabs ready: Luma dashboard, Incident Autopilot, Devin Automations,
+Keep these tabs ready: Luma dashboard, Incident Resolution, Devin Automations,
 triage session, remediation session, GitHub issue #1, and GitHub PR #2.
 
 ## 0:00–0:40 — What: customer impact
@@ -24,7 +24,7 @@ triage session, remediation session, GitHub issue #1, and GitHub PR #2.
 
 ## 0:40–1:25 — How: trigger and architecture
 
-**Screen:** Incident Autopilot, then click **Simulate production incident** only
+**Screen:** Run Simulation, then click **Dispatch incident** only
 if a fresh run is desired. For the final recording, the completed incident can
 be shown without generating a duplicate issue.
 
@@ -74,14 +74,16 @@ then open issue #1.
 
 ## 3:15–4:05 — Observability and engineering depth
 
-**Screen:** Completed Incident Autopilot dashboard.
+**Screen:** Completed Incident Resolution dashboard.
 
-> An engineering leader can see whether the system is working without reading
-> agent transcripts: alert accepted, zero active workers, two completed Devins,
-> one pull request, no failed runs, and a 100 percent success signal. The
-> timeline links directly to both sessions, the issue, and the PR. The backend
-> joins a durable SQLite incident log with live Devin Automation and session
-> APIs plus GitHub artifacts every five seconds.
+> An engineering leader can see the business outcome without reading agent
+> transcripts. This SEV-2 alert became a validated, reproducible issue in 3
+> minutes 34 seconds and a tested pull request in 8 minutes 26 seconds. The
+> timeline links directly to both Devin sessions, issue #1, PR #2, and the
+> verification evidence. Failed runs, pending approval, and source health are
+> visible on the same page. The backend joins a durable SQLite incident log
+> with live Devin Automation and session APIs plus GitHub artifacts every five
+> seconds.
 
 **Screen:** `scripts/provision_devin.py`, briefly show limits and prompts.
 
