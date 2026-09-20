@@ -85,7 +85,7 @@ export function OperationsDashboard() {
   const filteredRuns = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
     return runs.filter(run => {
-      const matchesQuery = !normalizedQuery || [run.id, run.title, run.service, run.issue?.title]
+      const matchesQuery = !normalizedQuery || [run.id, run.title, run.service, run.repository, run.sourceName, run.issue?.title]
         .filter(Boolean)
         .some(value => value?.toLowerCase().includes(normalizedQuery))
       const matchesFilter = filter === 'all'
@@ -237,9 +237,10 @@ function IncidentTicket({ run, onOpen }: { run: ResolutionRun; onOpen: () => voi
 
 function WorkflowMiniProgress({ run }: { run: ResolutionRun }) {
   const current = stageIndex(run.stage)
+  const labels = [run.sourceType === 'issue' ? 'Intake' : 'Alert', 'Issue', 'PR', 'Resolved']
   return (
     <div className="ticket-progress" aria-label={`Current stage: ${run.stage}`}>
-      {['Alert', 'Issue', 'PR', 'Resolved'].map((label, index) => (
+      {labels.map((label, index) => (
         <div className={index <= current ? 'is-complete' : ''} key={label}>
           <span>{index < current ? <Check size={10} /> : index + 1}</span>
           <small>{label}</small>
@@ -274,6 +275,7 @@ function TicketDetail({
         <div className="ticket-detail-hero__main">
           <div className="ticket-detail-hero__meta">
             <span className={`severity severity--${run.severity.toLowerCase()}`}>{run.severity}</span>
+            <span>{run.sourceType === 'issue' ? 'GitHub issue' : run.sourceName}</span>
             <span>{run.service}</span>
             <span>Detected {formatDateTime(run.detectedAt)}</span>
           </div>
@@ -343,7 +345,7 @@ function TicketDetail({
 function WorkflowRail({ run }: { run: ResolutionRun }) {
   const current = stageIndex(run.stage)
   const steps = [
-    { label: 'Alert', detail: formatDuration(0), icon: Radio },
+    { label: run.sourceType === 'issue' ? 'Issue intake' : 'Alert', detail: formatDuration(0), icon: Radio },
     { label: 'Validated issue', detail: formatDuration(run.durations.toIssueSeconds), icon: FileText },
     { label: 'Pull request', detail: formatDuration(run.durations.toPrSeconds), icon: GitPullRequest },
     { label: 'Resolved', detail: run.stage === 'resolved' ? 'Merged' : 'Pending', icon: CheckCircle2 },
@@ -366,11 +368,15 @@ function WorkflowRail({ run }: { run: ResolutionRun }) {
 function SignalPanel({ run }: { run: ResolutionRun }) {
   return (
     <section className="detail-panel signal-panel">
-      <h2>Production signal</h2>
+      <h2>{run.sourceType === 'issue' ? 'Workflow intake' : 'Production signal'}</h2>
       <dl>
-        <div><dt>Error rate</dt><dd>{run.signals.errorRate}%</dd></div>
-        <div><dt>p95 latency</dt><dd>{run.signals.p95LatencyMs.toLocaleString()} ms</dd></div>
-        <div><dt>Affected sessions</dt><dd>{run.signals.affectedSessions.toLocaleString()}</dd></div>
+        {run.signals.map(signal => (
+          <div key={signal.key}>
+            <dt>{signal.label}</dt>
+            <dd>{formatSignalValue(signal.value)}{signal.unit ? ` ${signal.unit}` : ''}</dd>
+          </div>
+        ))}
+        {!run.signals.length && <div><dt>Source</dt><dd>GitHub issue</dd></div>}
         <div><dt>Time to issue</dt><dd>{formatDuration(run.durations.toIssueSeconds)}</dd></div>
         <div><dt>Time to PR</dt><dd>{formatDuration(run.durations.toPrSeconds)}</dd></div>
       </dl>
@@ -612,4 +618,10 @@ function relativeAge(value?: string): string {
 
 function humanize(value: string): string {
   return value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase())
+}
+
+function formatSignalValue(value: string | number): string {
+  if (typeof value === 'number') return value.toLocaleString()
+  const numeric = Number(value)
+  return value.trim() && Number.isFinite(numeric) ? numeric.toLocaleString() : value
 }

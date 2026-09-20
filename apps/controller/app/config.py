@@ -29,10 +29,15 @@ class Settings(BaseSettings):
     devin_triage_webhook_url: str = ""
     devin_triage_webhook_secret: str = ""
     devin_remediation_automation_id: str = ""
+    devin_triage_max_acu: int = 20
+    devin_remediation_max_acu: int = 40
 
     github_repository: str = "engineerA314/superset"
     github_token: str = ""
+    github_webhook_secret: str = ""
+    github_managed_label: str = "autopilot-managed"
     incident_db_path: str = ".state/incidents.db"
+    workflow_reconcile_seconds: int = 20
 
     @property
     def embedded_superset_configured(self) -> bool:
