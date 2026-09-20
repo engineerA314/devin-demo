@@ -1,0 +1,21 @@
+{
+  "query": "service:superset-api resource_name:POST_/api/v1/chart/data",
+  "route": "POST /api/v1/chart/data",
+  "aggregation": {
+    "requests": 193,
+    "p50_ms": 1360,
+    "p95_ms": 6280,
+    "p99_ms": 7440,
+    "status_200": 164,
+    "client_closed_499": 26,
+    "gateway_timeout_504": 3
+  },
+  "samples": [
+    {"trace_id": "tr-071", "tenant": "tenant-07", "chart_id": "sales-share-table", "duration_ms": 6412, "gateway_status": 499, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"},
+    {"trace_id": "tr-072", "tenant": "tenant-12", "chart_id": "sales-share-table", "duration_ms": 6873, "gateway_status": 499, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"},
+    {"trace_id": "tr-073", "tenant": "tenant-19", "chart_id": "revenue-share-table", "duration_ms": 7310, "gateway_status": 504, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"},
+    {"trace_id": "tr-074", "tenant": "tenant-23", "chart_id": "revenue-by-product", "duration_ms": 4744, "gateway_status": 200, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"},
+    {"trace_id": "tr-075", "tenant": "tenant-07", "chart_id": "revenue-total", "duration_ms": 583, "gateway_status": 200, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"},
+    {"trace_id": "tr-076", "tenant": "tenant-12", "chart_id": "revenue-trend", "duration_ms": 781, "gateway_status": 200, "superset_completed": true, "superset_status": 200, "cache_metadata": "loaded"}
+  ]
+}

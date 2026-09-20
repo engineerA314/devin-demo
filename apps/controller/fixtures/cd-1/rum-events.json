@@ -1,0 +1,24 @@
+{
+  "query": "service:luma-web env:production event:chart_render",
+  "aggregation": {
+    "chart_views": 193,
+    "render_timeouts": 36,
+    "timeout_rate_percent": 18.7,
+    "p95_render_ms": 6320,
+    "affected_tenants": 14,
+    "affected_dashboards": 6
+  },
+  "breakdown_by_chart_type": [
+    {"chart_type": "table_v2", "views": 112, "timeouts": 36, "p95_ms": 6810},
+    {"chart_type": "big_number_total", "views": 31, "timeouts": 0, "p95_ms": 740},
+    {"chart_type": "echarts_timeseries_line", "views": 50, "timeouts": 0, "p95_ms": 910}
+  ],
+  "samples": [
+    {"tenant": "tenant-07", "dashboard": "executive-sales", "chart_id": "sales-share-table", "chart_type": "table_v2", "outcome": "timeout", "render_ms": 5000},
+    {"tenant": "tenant-12", "dashboard": "executive-sales", "chart_id": "sales-share-table", "chart_type": "table_v2", "outcome": "timeout", "render_ms": 5000},
+    {"tenant": "tenant-19", "dashboard": "account-health", "chart_id": "revenue-share-table", "chart_type": "table_v2", "outcome": "timeout", "render_ms": 5000},
+    {"tenant": "tenant-23", "dashboard": "account-health", "chart_id": "revenue-by-product", "chart_type": "table_v2", "outcome": "rendered", "render_ms": 4820},
+    {"tenant": "tenant-07", "dashboard": "executive-sales", "chart_id": "revenue-total", "chart_type": "big_number_total", "outcome": "rendered", "render_ms": 621},
+    {"tenant": "tenant-12", "dashboard": "executive-sales", "chart_id": "revenue-trend", "chart_type": "echarts_timeseries_line", "outcome": "rendered", "render_ms": 803}
+  ]
+}

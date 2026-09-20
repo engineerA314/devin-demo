@@ -1,0 +1,68 @@
+{
+  "id": "cd1-prod-window-01",
+  "scenario_id": "CD-1",
+  "provider": "Datadog (simulated export)",
+  "mode": "deterministic_snapshot",
+  "captured_at": "2026-09-20T05:20:00Z",
+  "window": {
+    "start": "2026-09-20T05:05:00Z",
+    "end": "2026-09-20T05:20:00Z"
+  },
+  "description": "Read-only exports linked from the incident monitor. The snapshot is demo data shaped like production RUM, APM, warehouse, change, and configuration views.",
+  "artifacts": [
+    {
+      "id": "rum-events",
+      "label": "Browser RUM",
+      "source": "Datadog RUM",
+      "file": "rum-events.json",
+      "record_count": 193,
+      "sample_count": 6,
+      "summary": "Chart render outcomes across affected and unaffected customer sessions."
+    },
+    {
+      "id": "apm-traces",
+      "label": "Chart-data traces",
+      "source": "Datadog APM",
+      "file": "apm-traces.json",
+      "record_count": 193,
+      "sample_count": 6,
+      "summary": "Representative request traces and latency breakdowns for the chart-data route."
+    },
+    {
+      "id": "warehouse-digest",
+      "label": "Warehouse query digest",
+      "source": "PostgreSQL query telemetry",
+      "file": "warehouse-query-digest.json",
+      "record_count": 4,
+      "sample_count": 4,
+      "summary": "Normalized query fingerprints and volume during the incident window."
+    },
+    {
+      "id": "chart-configurations",
+      "label": "Chart configurations",
+      "source": "Superset metadata export",
+      "file": "chart-configurations.json",
+      "record_count": 6,
+      "sample_count": 6,
+      "summary": "Configurations for chart IDs referenced in the RUM export."
+    },
+    {
+      "id": "service-health",
+      "label": "Service health",
+      "source": "Infrastructure metrics",
+      "file": "service-health.json",
+      "record_count": 5,
+      "sample_count": 5,
+      "summary": "Saturation, errors, and latency for the host app, gateway, Superset, and data services."
+    },
+    {
+      "id": "change-events",
+      "label": "Deployment events",
+      "source": "Deployment tracking",
+      "file": "deployment-events.json",
+      "record_count": 4,
+      "sample_count": 4,
+      "summary": "Recent changes for components in the embedded analytics request path."
+    }
+  ]
+}

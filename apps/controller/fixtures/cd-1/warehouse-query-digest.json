@@ -1,0 +1,47 @@
+{
+  "window_health": {
+    "availability_percent": 100.0,
+    "error_rate_percent": 0.0,
+    "cpu_peak_percent": 63,
+    "queue_depth_peak": 34,
+    "baseline_queue_depth_peak": 5
+  },
+  "fingerprints": [
+    {
+      "id": "q-7f2a",
+      "normalized_sql": "SELECT SUM(revenue) FROM orders WHERE tenant_id = ? AND order_ts >= ? AND order_ts < ?",
+      "calls": 164,
+      "baseline_calls_for_same_15m": 21,
+      "p95_ms": 2140,
+      "rows_scanned_per_call": 100000,
+      "errors": 0
+    },
+    {
+      "id": "q-29cd",
+      "normalized_sql": "SELECT product_id, SUM(revenue) FROM orders WHERE tenant_id = ? AND order_ts >= ? AND order_ts < ? GROUP BY product_id ORDER BY SUM(revenue) DESC LIMIT ?",
+      "calls": 9,
+      "baseline_calls_for_same_15m": 12,
+      "p95_ms": 1860,
+      "rows_scanned_per_call": 100000,
+      "errors": 0
+    },
+    {
+      "id": "q-a114",
+      "normalized_sql": "SELECT DATE_TRUNC(?, order_ts), SUM(revenue) FROM orders WHERE tenant_id = ? GROUP BY 1",
+      "calls": 7,
+      "baseline_calls_for_same_15m": 8,
+      "p95_ms": 508,
+      "rows_scanned_per_call": 100000,
+      "errors": 0
+    },
+    {
+      "id": "q-f861",
+      "normalized_sql": "SELECT COUNT(*) FROM customers WHERE tenant_id = ?",
+      "calls": 5,
+      "baseline_calls_for_same_15m": 6,
+      "p95_ms": 42,
+      "rows_scanned_per_call": 1200,
+      "errors": 0
+    }
+  ]
+}

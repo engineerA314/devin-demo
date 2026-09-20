@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.local
+*.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.state/
+docs/evidence/*-e2e-run.json
+node_modules/
+dist/
+.idea/
+.vscode/

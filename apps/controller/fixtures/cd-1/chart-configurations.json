@@ -1,0 +1,10 @@
+{
+  "charts": [
+    {"chart_id": "sales-share-table", "viz_type": "table", "query_mode": "aggregate", "percent_metrics": ["SUM(revenue)"], "percent_metric_calculation": "all_records", "server_pagination": true},
+    {"chart_id": "revenue-share-table", "viz_type": "table", "query_mode": "aggregate", "percent_metrics": ["SUM(revenue)"], "percent_metric_calculation": "all_records", "server_pagination": true},
+    {"chart_id": "revenue-by-product", "viz_type": "table", "query_mode": "aggregate", "percent_metrics": ["SUM(revenue)"], "percent_metric_calculation": "all_records", "server_pagination": true},
+    {"chart_id": "top-products", "viz_type": "table", "query_mode": "aggregate", "percent_metrics": ["SUM(revenue)"], "percent_metric_calculation": "row_limit", "server_pagination": true},
+    {"chart_id": "revenue-total", "viz_type": "big_number_total", "query_mode": "aggregate", "metrics": ["SUM(revenue)"]},
+    {"chart_id": "revenue-trend", "viz_type": "echarts_timeseries_line", "query_mode": "aggregate", "metrics": ["SUM(revenue)"]}
+  ]
+}

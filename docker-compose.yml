@@ -1,0 +1,46 @@
+services:
+  controller:
+    build:
+      context: ./apps/controller
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173}
+      SUPERSET_INTERNAL_URL: ${SUPERSET_INTERNAL_URL:-}
+      SUPERSET_PUBLIC_URL: ${SUPERSET_PUBLIC_URL:-}
+      SUPERSET_DASHBOARD_ID: ${SUPERSET_DASHBOARD_ID:-}
+      SUPERSET_USERNAME: ${SUPERSET_USERNAME:-}
+      SUPERSET_PASSWORD: ${SUPERSET_PASSWORD:-}
+      DEVIN_API_KEY: ${DEVIN_API_KEY:?Set DEVIN_API_KEY in .env before running Docker}
+      DEVIN_ORG_ID: ${DEVIN_ORG_ID:?Set DEVIN_ORG_ID in .env before running Docker}
+      DEVIN_TRIAGE_MAX_ACU: ${DEVIN_TRIAGE_MAX_ACU:-20}
+      DEVIN_REMEDIATION_MAX_ACU: ${DEVIN_REMEDIATION_MAX_ACU:-40}
+      CI_FEEDBACK_MAX_ATTEMPTS: ${CI_FEEDBACK_MAX_ATTEMPTS:-2}
+      ATTRIBUTION_MIN_CONFIDENCE: ${ATTRIBUTION_MIN_CONFIDENCE:-0.75}
+      GITHUB_REPOSITORY: ${GITHUB_REPOSITORY:?Set a writable Superset fork in .env}
+      PRODUCT_REPOSITORY: ${PRODUCT_REPOSITORY:?Set the product repository in .env}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      GITHUB_MANAGED_LABEL: ${GITHUB_MANAGED_LABEL:-autopilot-managed}
+      INCIDENT_DB_PATH: /data/incidents.db
+      WORKFLOW_RECONCILE_SECONDS: ${WORKFLOW_RECONCILE_SECONDS:-20}
+    volumes:
+      - ./.state/controller:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      controller:
+        condition: service_healthy
+    ports:
+      - "3000:80"

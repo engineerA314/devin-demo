@@ -1,0 +1,130 @@
+x-superset-environment: &superset-environment
+  PYTHONUNBUFFERED: "1"
+  PYTHONPATH: /app/pythonpath:/app/docker/pythonpath_dev
+  DATABASE_DIALECT: sqlite
+  SUPERSET__SQLALCHEMY_DATABASE_URI: sqlite:////tmp/superset.db
+  SUPERSET__SQLALCHEMY_EXAMPLES_URI: sqlite:////tmp/examples.db
+  SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config_demo.py
+  DEVIN_DEMO_STATE_DIR: /tmp/superset-demo
+  SUPERSET_SECRET_KEY: local-devin-demo-secret
+  SUPERSET_FEATURE_EMBEDDED_SUPERSET: "true"
+  ADMIN_PASSWORD: admin
+  FLASK_DEBUG: "false"
+  SUPERSET_LOG_LEVEL: info
+
+x-superset-build: &superset-build
+  context: ${SUPERSET_REPO_PATH:-../../../superset}
+  target: dev
+  args:
+    DEV_MODE: "true"
+    INCLUDE_CHROMIUM: "false"
+    INCLUDE_FIREFOX: "false"
+    BUILD_TRANSLATIONS: "false"
+
+services:
+  analytics-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: analytics
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - max_connections=100
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset -d analytics"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "15432:5432"
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+
+  superset-light:
+    image: devin-superset-runtime:local
+    build: *superset-build
+    command:
+      - /bin/bash
+      - -ceu
+      - |
+        /app/docker/docker-bootstrap.sh
+        superset db upgrade
+        superset fab create-admin \
+          --username admin \
+          --firstname Superset \
+          --lastname Admin \
+          --email admin@example.com \
+          --password admin
+        superset init
+
+        # Current master still asks for the removed countries.json example path.
+        # A read-only bind mount below provides the existing parquet fixture at
+        # runtime while keeping the fork unchanged for Devin to remediate.
+        python - <<'PY'
+        from uuid import UUID
+
+        from superset.app import create_app
+
+        app = create_app()
+        with app.app_context():
+            from superset import db
+            from superset.daos.dashboard import EmbeddedDashboardDAO
+            from superset.examples.world_bank import load_world_bank_health_n_pop
+            from superset.models.dashboard import Dashboard
+
+            load_world_bank_health_n_pop(force=True)
+            dashboard = db.session.query(Dashboard).filter_by(slug="world_health").one()
+            embedded = EmbeddedDashboardDAO.upsert(
+                dashboard,
+                [
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000",
+                    "http://localhost:5173",
+                    "http://127.0.0.1:5173",
+                ],
+            )
+            embedded.uuid = UUID("00000000-0000-4000-8000-000000000001")
+            db.session.commit()
+        PY
+
+        exec /app/docker/docker-bootstrap.sh app
+    environment: *superset-environment
+    volumes:
+      - ./superset_config_demo.py:/app/pythonpath/superset_config_demo.py:ro
+      - ../../scripts:/app/devin-demo-scripts:ro
+      - ../../.state/superset:/tmp/superset-demo
+      - ${SUPERSET_REPO_PATH:-../../../superset}/superset/examples/world_health:/app/superset/examples/countries.json:ro
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+
+  superset-node-light:
+    image: devin-superset-frontend:local
+    build:
+      context: ${SUPERSET_REPO_PATH:-../../../superset}
+      target: superset-node
+      args:
+        DEV_MODE: "true"
+        BUILD_TRANSLATIONS: "false"
+    command: ["/app/docker/docker-frontend.sh"]
+    environment:
+      BUILD_SUPERSET_FRONTEND_IN_DOCKER: "true"
+      NPM_RUN_PRUNE: "false"
+      DISABLE_TS_CHECKER: "true"
+      superset: http://superset-light:8088
+      WEBPACK_DEVSERVER_HOST: 0.0.0.0
+      WEBPACK_DEVSERVER_PORT: "9000"
+    depends_on:
+      superset-light:
+        condition: service_started
+    ports:
+      - "9001:9000"
+
+volumes:
+  analytics-db-data:

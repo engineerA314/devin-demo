@@ -1,0 +1,62 @@
+{
+  "candidate": "CD-1",
+  "generated_at": "2026-09-20T11:38:42.954468+00:00",
+  "superset_url": "http://localhost:9001",
+  "warehouse_rows": 10000000,
+  "customer_scope": "one separately warmed tenant_id filter per virtual customer",
+  "cache_expectation": "warm chart-data requests execute zero warehouse queries",
+  "runs": [
+    {
+      "virtual_customers": 1,
+      "client_timeout_seconds": 5.0,
+      "successes": 1,
+      "failures": 0,
+      "status_counts": {
+        "200": 1
+      },
+      "warm_cache_successes": 1,
+      "wall_seconds": 0.545,
+      "p50_seconds": 0.544,
+      "p95_seconds": 0.544,
+      "max_seconds": 0.544,
+      "totals_query_calls": 1,
+      "total_exec_ms": 430.2,
+      "mean_exec_ms": 430.2
+    },
+    {
+      "virtual_customers": 25,
+      "client_timeout_seconds": 5.0,
+      "successes": 25,
+      "failures": 0,
+      "status_counts": {
+        "200": 25
+      },
+      "warm_cache_successes": 25,
+      "wall_seconds": 3.612,
+      "p50_seconds": 3.156,
+      "p95_seconds": 3.584,
+      "max_seconds": 3.599,
+      "totals_query_calls": 25,
+      "total_exec_ms": 29558.0,
+      "mean_exec_ms": 1182.3
+    },
+    {
+      "virtual_customers": 75,
+      "client_timeout_seconds": 5.0,
+      "successes": 25,
+      "failures": 50,
+      "status_counts": {
+        "200": 25,
+        "timeout": 50
+      },
+      "warm_cache_successes": 25,
+      "wall_seconds": 5.185,
+      "p50_seconds": 5.018,
+      "p95_seconds": 5.025,
+      "max_seconds": 5.032,
+      "totals_query_calls": 75,
+      "total_exec_ms": 69888.0,
+      "mean_exec_ms": 931.8
+    }
+  ]
+}

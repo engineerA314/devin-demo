@@ -1,0 +1,9 @@
+{
+  "services": [
+    {"name": "luma-web", "availability_percent": 99.99, "cpu_peak_percent": 42, "memory_peak_percent": 51, "saturation": false, "observation": "Only embedded chart render timers breached their budget."},
+    {"name": "edge-gateway", "availability_percent": 99.81, "cpu_peak_percent": 38, "memory_peak_percent": 46, "saturation": false, "observation": "Client-closed requests increased only on the chart-data route."},
+    {"name": "superset-api", "availability_percent": 100.0, "cpu_peak_percent": 58, "memory_peak_percent": 61, "saturation": false, "observation": "No process restarts or worker exhaustion detected."},
+    {"name": "superset-metadata-db", "availability_percent": 100.0, "cpu_peak_percent": 31, "connection_pool_peak_percent": 44, "saturation": false, "observation": "No lock, connection, or latency alert fired."},
+    {"name": "analytics-warehouse", "availability_percent": 100.0, "cpu_peak_percent": 63, "saturation": false, "observation": "No failed queries; queue depth rose with one query fingerprint."}
+  ]
+}

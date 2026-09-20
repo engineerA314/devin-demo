@@ -1,0 +1,9 @@
+{
+  "incident_window_changes": [],
+  "most_recent": [
+    {"component": "luma-web", "repository": "engineerA314/devin-demo", "deployed_at": "2026-09-18T14:03:00Z", "revision": "web-7a11", "result": "successful"},
+    {"component": "edge-gateway", "repository": "engineerA314/devin-demo", "deployed_at": "2026-09-16T09:40:00Z", "revision": "gateway-492c", "result": "successful"},
+    {"component": "superset-api", "repository": "engineerA314/superset", "deployed_at": "2026-09-15T18:22:00Z", "revision": "4511c13", "result": "successful"},
+    {"component": "analytics-warehouse", "repository": "data-platform/warehouse-config", "deployed_at": "2026-09-14T02:10:00Z", "revision": "warehouse-21f0", "result": "successful"}
+  ]
+}
