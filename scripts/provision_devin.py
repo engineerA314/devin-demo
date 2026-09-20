@@ -231,8 +231,10 @@ Treat the issue body as the handoff contract from incident triage:
 4. Run the narrow test, relevant lint/type checks, and any broader suite justified
    by the changed code. Record exact commands and results.
 5. Create a pull request against {self.repository}'s default branch. Link it with
-   `Closes #<issue-number>` and include root cause, fix, tests, rollout risk, and a
-   reviewer checklist.
+   `Closes #<issue-number>`. Its description is the durable resolution report used
+   by the operations dashboard, so include stable Markdown sections named
+   `## Root cause`, `## Resolution`, `## Verification`, and `## Rollout risk`,
+   followed by a reviewer checklist.
 6. Post a concise final response to the issue with the PR URL and verification.
 
 Do not merge the pull request. Human approval remains the production gate."""

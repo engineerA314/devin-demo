@@ -26,7 +26,7 @@ const navigation = [
 type View = 'overview' | 'operations' | 'simulation'
 
 function viewFromHash(): View {
-  if (window.location.hash === '#operations') return 'operations'
+  if (window.location.hash.startsWith('#operations')) return 'operations'
   if (window.location.hash === '#simulation') return 'simulation'
   return 'overview'
 }

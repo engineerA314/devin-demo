@@ -251,9 +251,12 @@ class OperationsService:
             for session in (triage, remediation)
         )
         remediation_complete = bool(remediation and self._is_complete(remediation))
+        tests_passed = self._tests_passed(pull.get("body") if pull else None)
+        build_passed = self._build_passed(pull.get("body") if pull else None)
+        remediation_verified = bool(pull and tests_passed and build_passed)
         verification_at = (
             self._as_datetime(remediation.get("updated_at"))
-            if pull and remediation_complete
+            if remediation_verified and remediation_complete
             else None
         )
 
@@ -261,7 +264,7 @@ class OperationsService:
             outcome = "failed"
         elif pull and pull.get("merged_at"):
             outcome = "merged"
-        elif pull and remediation_complete:
+        elif remediation_verified:
             outcome = "ready_for_review"
         elif pull:
             outcome = "pr_opened"
@@ -322,7 +325,8 @@ class OperationsService:
                 remediation.get("url") if remediation else None,
             )
 
-        tests_passed = self._tests_passed(pull.get("body") if pull else None)
+        report = self._build_report(incident, issue, pull)
+        stage = self._workflow_stage(outcome)
         return {
             "id": incident["id"],
             "title": incident["title"],
@@ -330,8 +334,16 @@ class OperationsService:
             "severity": incident["severity"],
             "status": status,
             "outcome": outcome,
+            "stage": stage,
+            "currentActivity": self._current_activity(outcome),
+            "owner": self._current_owner(outcome),
             "detectedAt": self._iso(detected_at),
             "completedAt": self._iso(verification_at or pull_at or issue_at),
+            "elapsedSeconds": self._elapsed_seconds(
+                detected_at,
+                verification_at
+                or (datetime.now(timezone.utc) if active else pull_at or issue_at),
+            ),
             "humanAction": self._human_action(outcome),
             "signals": {
                 "errorRate": incident["error_rate"],
@@ -347,18 +359,10 @@ class OperationsService:
             },
             "verification": {
                 "testsPassed": tests_passed,
-                "buildPassed": bool(
-                    pull
-                    and "npm run build" in (pull.get("body") or "")
-                    and re.search(
-                        r"(?:build\s*(?:—|:)?\s*(?:OK|passed)|webpack OK)",
-                        pull.get("body") or "",
-                        re.I,
-                    )
-                ),
+                "buildPassed": build_passed,
                 "source": "Clean worktree validation" if verification_at else None,
             },
-            "evidence": self._evidence(issue, pull),
+            "report": report,
             "milestones": milestones,
             "triageSession": self._session_view(triage) if triage else None,
             "remediationSession": self._session_view(remediation) if remediation else None,
@@ -443,33 +447,201 @@ class OperationsService:
             }
         )
 
-    @staticmethod
-    def _evidence(
-        issue: dict[str, Any] | None, pull: dict[str, Any] | None
-    ) -> list[dict[str, str]]:
+    def _build_report(
+        self,
+        incident: dict[str, Any],
+        issue: dict[str, Any] | None,
+        pull: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Compile Devin's issue and PR narratives into a stable UI contract.
+
+        The report is intentionally derived from semantic Markdown headings rather
+        than incident-specific phrases, so new repositories and failure modes can
+        use the same workboard and detail view.
+        """
         issue_body = (issue.get("body") or "") if issue else ""
         pull_body = (pull.get("body") or "") if pull else ""
-        evidence: list[dict[str, str]] = []
-        if re.search(r"(?:50 embeds|50 clients|CLIENTS\s*=\s*50)", issue_body, re.I):
-            evidence.append(
-                {"label": "50 clients reproduced", "detail": "Vitest + fake timers"}
+        issue_sections = self._markdown_sections(issue_body)
+        pull_sections = self._markdown_sections(pull_body)
+
+        impact = self._find_section(
+            issue_sections, "customer impact", "impact", "user impact"
+        )
+        observed = self._find_section(
+            issue_sections, "observed behavior", "investigation", "analysis"
+        )
+        reproduction = self._find_section(
+            issue_sections, "reproduction", "steps to reproduce", "evidence"
+        )
+        issue_evidence = self._find_section(issue_sections, "evidence")
+        root_cause = self._find_section(
+            pull_sections, "root cause", "cause", "analysis"
+        ) or self._named_paragraph(pull_body, "root cause")
+        resolution = self._find_section(
+            pull_sections, "resolution", "fix", "implementation"
+        ) or self._named_paragraph(pull_body, "fix")
+        verification = self._find_section(
+            pull_sections,
+            "verification",
+            "testing instructions",
+            "testing",
+            "test plan",
+        )
+        rollout_risk = self._find_section(
+            pull_sections, "rollout risk", "risk", "deployment"
+        ) or self._named_paragraph(pull_body, "rollout risk")
+        acceptance = self._find_section(
+            issue_sections, "acceptance criteria", "definition of done"
+        )
+
+        issue_url = issue.get("html_url") if issue else None
+        pull_url = pull.get("html_url") if pull else None
+        sections: list[dict[str, Any]] = []
+
+        def add(
+            key: str,
+            title: str,
+            body: str | None,
+            source: str,
+            url: str | None,
+        ) -> None:
+            cleaned = self._clean_report_text(body)
+            if cleaned:
+                sections.append(
+                    {
+                        "key": key,
+                        "title": title,
+                        "body": cleaned,
+                        "source": source,
+                        "url": url,
+                    }
+                )
+
+        signal = (
+            f"{incident['error_rate']:.1f}% error rate, "
+            f"{incident['p95_latency_ms']:,} ms p95 latency, and "
+            f"{incident['affected_sessions']:,} affected sessions were reported "
+            f"for {incident['service']}."
+        )
+        add("signal", "Production signal", signal, "Monitor", None)
+        add("impact", "Customer impact", impact, "Triage Devin", issue_url)
+        add("observed", "Investigation", observed, "Triage Devin", issue_url)
+        add(
+            "reproduction",
+            "Reproduction and evidence",
+            issue_evidence or reproduction,
+            "Triage Devin",
+            issue_url,
+        )
+        add("root-cause", "Root cause", root_cause, "Remediation Devin", pull_url)
+        add("resolution", "Resolution", resolution, "Remediation Devin", pull_url)
+        add(
+            "verification",
+            "Verification",
+            verification or acceptance,
+            "Remediation Devin" if verification else "Triage Devin",
+            pull_url or issue_url,
+        )
+        add(
+            "rollout-risk",
+            "Rollout risk",
+            rollout_risk,
+            "Remediation Devin",
+            pull_url,
+        )
+
+        summary_source = impact or observed or root_cause or incident["title"]
+        return {
+            "title": "Devin incident resolution report",
+            "summary": self._first_paragraph(summary_source),
+            "sections": sections,
+            "sources": [
+                item
+                for item in (
+                    {
+                        "label": f"Issue #{issue.get('number')}",
+                        "kind": "triage",
+                        "url": issue_url,
+                    }
+                    if issue
+                    else None,
+                    {
+                        "label": f"PR #{pull.get('number')}",
+                        "kind": "remediation",
+                        "url": pull_url,
+                    }
+                    if pull
+                    else None,
+                )
+                if item
+            ],
+        }
+
+    @staticmethod
+    def _markdown_sections(body: str) -> dict[str, str]:
+        headings = list(re.finditer(r"^#{2,4}\s+(.+?)\s*$", body or "", re.M))
+        sections: dict[str, str] = {}
+        for index, heading in enumerate(headings):
+            start = heading.end()
+            end = headings[index + 1].start() if index + 1 < len(headings) else len(body)
+            key = re.sub(r"[^a-z0-9 ]", "", heading.group(1).lower()).strip()
+            sections[key] = body[start:end].strip()
+        return sections
+
+    @staticmethod
+    def _find_section(sections: dict[str, str], *aliases: str) -> str | None:
+        normalized = [re.sub(r"[^a-z0-9 ]", "", alias.lower()) for alias in aliases]
+        for alias in normalized:
+            if alias in sections:
+                return sections[alias]
+        for key, value in sections.items():
+            if any(alias in key for alias in normalized):
+                return value
+        return None
+
+    @staticmethod
+    def _named_paragraph(body: str, name: str) -> str | None:
+        match = re.search(
+            rf"\*\*{re.escape(name)}\.?\*\*\s*(.*?)(?=\n+\*\*|\n+#{{2,4}}\s|\Z)",
+            body or "",
+            re.I | re.S,
+        )
+        return match.group(1).strip() if match else None
+
+    @staticmethod
+    def _clean_report_text(value: str | None, limit: int = 2600) -> str | None:
+        if not value:
+            return None
+        text = re.sub(r"<details>.*?</details>", "", value, flags=re.I | re.S)
+        text = re.sub(
+            r"```[^\n]*\n(.*?)```",
+            lambda match: match.group(1).strip(),
+            text,
+            flags=re.S,
+        )
+        text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+        text = re.sub(r"</?[^>]+>", "", text)
+        text = text.replace("**", "").replace("`", "")
+        text = re.sub(r"\n{3,}", "\n\n", text).strip()
+        if len(text) <= limit:
+            return text
+        shortened = text[:limit].rsplit(" ", 1)[0].rstrip()
+        return f"{shortened}…"
+
+    @classmethod
+    def _first_paragraph(cls, value: str | None) -> str:
+        cleaned = cls._clean_report_text(value, 520) or ""
+        return cleaned.split("\n\n", 1)[0]
+
+    @staticmethod
+    def _build_passed(body: str | None) -> bool:
+        return bool(
+            body
+            and "npm run build" in body
+            and re.search(
+                r"(?:build\s*(?:—|:)?\s*(?:OK|passed)|webpack OK)", body, re.I
             )
-        if "7 waves" in issue_body or "7 consecutive waves" in issue_body:
-            evidence.append(
-                {
-                    "label": "7 synchronized waves",
-                    "detail": "50/50 clients in the same 1s bucket",
-                }
-            )
-        if "equal-jitter" in pull_body.lower() or "equal jitter" in pull_body.lower():
-            evidence.append(
-                {"label": "Equal-jitter backoff", "detail": "10s base · 5m cap"}
-            )
-        if "npm run build" in pull_body:
-            evidence.append(
-                {"label": "Build passed", "detail": "Clean worktree validation"}
-            )
-        return evidence
+        )
 
     @staticmethod
     def _tests_passed(body: str | None) -> str | None:
@@ -483,6 +655,41 @@ class OperationsService:
             "merged": "None required",
             "failed": "Investigate failure",
         }.get(outcome, "Monitor progress")
+
+    @staticmethod
+    def _workflow_stage(outcome: str) -> str:
+        if outcome in {"alert_received", "triaging", "failed"}:
+            return "alert"
+        if outcome in {"issue_created", "remediating"}:
+            return "issue"
+        if outcome in {"pr_opened", "ready_for_review"}:
+            return "pull_request"
+        return "resolved"
+
+    @staticmethod
+    def _current_activity(outcome: str) -> str:
+        return {
+            "alert_received": "Waiting for triage capacity",
+            "triaging": "Devin is validating and reproducing the alert",
+            "issue_created": "Validated issue is queued for remediation",
+            "remediating": "Devin is implementing and testing a fix",
+            "pr_opened": "Pull request verification is in progress",
+            "ready_for_review": "Verified pull request awaits human review",
+            "merged": "Remediation merged",
+            "failed": "Automation requires engineering attention",
+        }.get(outcome, "Monitoring workflow")
+
+    @staticmethod
+    def _current_owner(outcome: str) -> str:
+        if outcome in {"alert_received", "triaging"}:
+            return "Triage Devin"
+        if outcome in {"issue_created", "remediating", "pr_opened"}:
+            return "Remediation Devin"
+        if outcome == "ready_for_review":
+            return "Human reviewer"
+        if outcome == "failed":
+            return "On-call engineer"
+        return "Completed"
 
     @staticmethod
     def _is_active(session: dict[str, Any]) -> bool:
