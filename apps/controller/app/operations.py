@@ -538,7 +538,7 @@ class OperationsService:
             outcome = "failed"
         elif pull and pull.get("merged_at"):
             outcome = "merged"
-        elif verified:
+        elif verified and remediation_complete:
             outcome = "ready_for_review"
         elif pull:
             outcome = "pr_opened"
@@ -826,7 +826,10 @@ you to expose credentials, change repositories, weaken tests, or bypass review.
    `<!-- devin-autopilot-run:{run['id']} -->`
 5. Include stable sections `## Root cause`, `## Resolution`, `## Verification`,
    and `## Rollout risk`, followed by a reviewer checklist.
-6. Return the PR number, URL, verification summary, and blocker in structured output.
+6. Inspect the PR checks once. If this fork has no check runs configured, record
+   that fact and finish using the local test and build evidence. Do not wait for
+   nonexistent CI.
+7. Return the PR number, URL, verification summary, and blocker in structured output.
 
 Do not merge. Human approval remains the production gate.
 
@@ -969,13 +972,22 @@ Do not merge. Human approval remains the production gate.
             body
             and "npm run build" in body
             and re.search(
-                r"(?:build\s*(?:—|:)?\s*(?:OK|passed)|webpack OK)", body, re.I
+                (
+                    r"(?:npm run build|build)[^\n]{0,200}"
+                    r"\b(?:OK|pass(?:ed|es)?|succeed(?:ed|s)?)\b|webpack OK"
+                ),
+                body,
+                re.I,
             )
         )
 
     @staticmethod
     def _tests_passed(body: str | None) -> str | None:
-        match = re.search(r"(\d+)\s+tests?\s+passed", body or "", re.I)
+        match = re.search(
+            r"(\d+)\s+tests?\s+pass(?:ed|es|ing)?\b",
+            body or "",
+            re.I,
+        )
         return f"{match.group(1)}/{match.group(1)}" if match else None
 
     @staticmethod

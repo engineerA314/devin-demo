@@ -62,6 +62,24 @@ class SetupModeTests(unittest.TestCase):
         self.assertEqual(20, settings.effective_reconcile_seconds)
 
 
+class VerificationParsingTests(unittest.TestCase):
+    def test_accepts_devin_present_tense_verification_report(self) -> None:
+        body = (
+            "## Verification\n"
+            "`npm test` → 3 files, 20 tests pass; "
+            "`npm run build` (tsc + babel + webpack) passes."
+        )
+
+        self.assertEqual("20/20", OperationsService._tests_passed(body))
+        self.assertTrue(OperationsService._build_passed(body))
+
+    def test_build_command_without_result_is_not_a_success_signal(self) -> None:
+        body = "## Testing instructions\nRun `npm test && npm run build`."
+
+        self.assertIsNone(OperationsService._tests_passed(body))
+        self.assertFalse(OperationsService._build_passed(body))
+
+
 class WorkflowStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
