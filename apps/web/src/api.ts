@@ -4,6 +4,64 @@ export type EmbedConfig = {
   supersetDomain?: string
 }
 
+export type OperationsOverview = {
+  configured: {
+    devin: boolean
+    triageWebhook: boolean
+    repository: string
+  }
+  metrics: {
+    incidents: number
+    activeSessions: number
+    completedSessions: number
+    failedSessions: number
+    pullRequests: number
+    acusConsumed: number
+    successRate: number
+  }
+  incidents: Array<{
+    id: string
+    title: string
+    service: string
+    severity: string
+    status: string
+    detected_at: string
+    error_rate: number
+    p95_latency_ms: number
+    affected_sessions: number
+    error_detail?: string
+  }>
+  automations: Array<{
+    id: string
+    name: string
+    enabled: boolean
+    lastInvocation: unknown
+  }>
+  sessions: Array<{
+    id: string
+    title: string
+    status: string
+    statusDetail?: string
+    url: string
+    tags: string[]
+    acusConsumed: number
+    pullRequests: Array<{ pr_url: string; pr_state: string }>
+    createdAt: number
+    updatedAt: number
+    automationId?: string
+  }>
+  issues: Array<{
+    number: number
+    title: string
+    state: string
+    url: string
+    labels: string[]
+    createdAt: string
+  }>
+  generatedAt: string
+  warnings: string[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -25,4 +83,15 @@ export async function fetchGuestToken(): Promise<string> {
     headers: { 'Content-Type': 'application/json' },
   })
   return result.token
+}
+
+export function getOperationsOverview(): Promise<OperationsOverview> {
+  return request<OperationsOverview>('/api/operations/overview')
+}
+
+export function triggerDemoIncident(): Promise<{ id: string; status: string }> {
+  return request<{ id: string; status: string }>('/api/incidents/demo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
 }

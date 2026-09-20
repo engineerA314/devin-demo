@@ -8,6 +8,7 @@ import {
   Menu,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   Users,
 } from 'lucide-react'
@@ -15,17 +16,22 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { getEmbedConfig, type EmbedConfig } from './api'
 import { EmbeddedSupersetDashboard } from './components/EmbeddedSupersetDashboard'
+import { OperationsDashboard } from './components/OperationsDashboard'
 
 const navigation = [
-  { label: 'Overview', icon: LayoutDashboard, active: true },
+  { label: 'Overview', icon: LayoutDashboard, view: 'overview' },
   { label: 'Revenue', icon: LineChart },
   { label: 'Customers', icon: Users },
+  { label: 'Incident Autopilot', icon: ShieldCheck, view: 'operations' },
 ]
 
 function App() {
   const [config, setConfig] = useState<EmbedConfig | null>(null)
   const [configError, setConfigError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [view, setView] = useState<'overview' | 'operations'>(() =>
+    window.location.hash === '#operations' ? 'operations' : 'overview',
+  )
 
   useEffect(() => {
     getEmbedConfig()
@@ -66,8 +72,14 @@ function App() {
             const Icon = item.icon
             return (
               <button
-                className={`navigation__item ${item.active ? 'navigation__item--active' : ''}`}
+                className={`navigation__item ${item.view === view ? 'navigation__item--active' : ''}`}
                 key={item.label}
+                onClick={() => {
+                  if (!item.view) return
+                  setView(item.view as 'overview' | 'operations')
+                  window.location.hash = item.view === 'operations' ? 'operations' : ''
+                  setSidebarOpen(false)
+                }}
                 type="button"
               >
                 <Icon size={18} />
@@ -134,6 +146,9 @@ function App() {
           </div>
         </header>
 
+        {view === 'operations' ? (
+          <OperationsDashboard />
+        ) : (
         <div className="page">
           <div className="page-heading">
             <div>
@@ -176,6 +191,7 @@ function App() {
             <span>Privacy · Status · Documentation</span>
           </footer>
         </div>
+        )}
       </main>
     </div>
   )

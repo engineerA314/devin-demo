@@ -1,11 +1,15 @@
+from typing import Any
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
+from .operations import OperationsService
 from .superset import SupersetGuestTokenClient
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
+operations = OperationsService(settings)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,3 +40,15 @@ async def embed_config() -> dict[str, str]:
 async def guest_token() -> dict[str, str]:
     client = SupersetGuestTokenClient(settings)
     return {"token": await client.create_guest_token()}
+
+
+@app.get("/api/operations/overview")
+async def operations_overview() -> dict[str, Any]:
+    overview = await operations.overview()
+    overview["warnings"] = [warning for warning in overview["warnings"] if warning]
+    return overview
+
+
+@app.post("/api/incidents/demo")
+async def trigger_demo_incident() -> dict[str, Any]:
+    return await operations.trigger_demo_incident()
