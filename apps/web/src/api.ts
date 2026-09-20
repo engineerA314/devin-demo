@@ -116,6 +116,9 @@ export type ResolutionRun = {
   service: string
   severity: string
   status: 'active' | 'complete' | 'failed'
+  stage: 'alert' | 'issue' | 'pull_request' | 'resolved'
+  currentActivity: string
+  owner: string
   outcome:
     | 'alert_received'
     | 'triaging'
@@ -127,6 +130,7 @@ export type ResolutionRun = {
     | 'failed'
   detectedAt: string
   completedAt?: string
+  elapsedSeconds?: number
   humanAction: string
   signals: {
     errorRate: number
@@ -143,7 +147,22 @@ export type ResolutionRun = {
     buildPassed: boolean
     source?: string
   }
-  evidence: Array<{ label: string; detail: string }>
+  report: {
+    title: string
+    summary: string
+    sections: Array<{
+      key: string
+      title: string
+      body: string
+      source: string
+      url?: string
+    }>
+    sources: Array<{
+      label: string
+      kind: 'triage' | 'remediation'
+      url: string
+    }>
+  }
   milestones: Array<{
     kind: 'alert' | 'agent' | 'issue' | 'code' | 'pull_request' | 'verified'
     label: string

@@ -70,9 +70,10 @@ alert from silently becoming an unverified code change.
   `@superset-ui/embedded-sdk`
 - **Incident controller:** FastAPI, a persistent SQLite incident log, Devin API
   read model, native automation webhook dispatch, and GitHub artifact reads
-- **Incident Resolution UI:** alert-to-issue and alert-to-PR lead time, an
-  artifact-linked timeline, verification evidence, failure signals, approval
-  state, and source health
+- **Incident Workboard:** a multi-incident Alert → Issue → Pull Request →
+  Resolved queue with search and operational filters. Every ticket opens a
+  Devin-authored resolution report compiled from the triage issue and
+  remediation PR, plus the linked sessions, metrics, and audit timeline
 - **Automation as code:** idempotent scripts for two Devin Automations and a
   reusable Devin Cloud environment blueprint
 - **Local Superset:** a script that builds and starts the fork with an embedded
@@ -187,8 +188,12 @@ webhook. Progress then appears under **Incident Resolution**:
 }
 ```
 
-The console polls a joined read model every five seconds. It combines the local
-incident log with Devin sessions and Automations plus GitHub issues. The
+The workboard polls a joined read model every five seconds. It combines the
+local incident log with Devin sessions and Automations plus GitHub issues and
+pull requests. Tickets move across workflow stages as those durable artifacts
+appear. Their detail pages compile semantic Markdown sections from Devin's
+triage issue and remediation PR into a common resolution-report schema, so the
+UI supports new incident types without scenario-specific evidence cards. The
 observable completion contract is:
 
 ```text

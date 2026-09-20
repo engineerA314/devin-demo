@@ -74,16 +74,17 @@ then open issue #1.
 
 ## 3:15–4:05 — Observability and engineering depth
 
-**Screen:** Completed Incident Resolution dashboard.
+**Screen:** Incident Workboard, then open the completed ticket.
 
 > An engineering leader can see the business outcome without reading agent
-> transcripts. This SEV-2 alert became a validated, reproducible issue in 3
-> minutes 34 seconds and a tested pull request in 8 minutes 26 seconds. The
-> timeline links directly to both Devin sessions, issue #1, PR #2, and the
-> verification evidence. Failed runs, pending approval, and source health are
-> visible on the same page. The backend joins a durable SQLite incident log
-> with live Devin Automation and session APIs plus GitHub artifacts every five
-> seconds.
+> transcripts. Every incident moves from Alert to Validated Issue to Pull
+> Request and Resolved. This SEV-2 alert became a reproducible issue in 3
+> minutes 34 seconds and a tested pull request in 8 minutes 26 seconds. Opening
+> the ticket shows a resolution report compiled from Devin's triage and
+> remediation artifacts: customer impact, investigation, reproduction, root
+> cause, fix, verification, and rollout risk. The backend joins a durable
+> SQLite incident log with live Devin Automation and session APIs plus GitHub
+> artifacts every five seconds.
 
 **Screen:** `scripts/provision_devin.py`, briefly show limits and prompts.
 
