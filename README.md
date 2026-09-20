@@ -32,7 +32,39 @@ docker compose up --build
 Open [http://localhost:3000](http://localhost:3000). The controller health
 endpoint is available at [http://localhost:8000/health](http://localhost:8000/health).
 
-## Connect an embedded Superset dashboard
+## Run with the Apache Superset fork
+
+Keep `engineerA314/devin-demo` and `engineerA314/superset` in sibling
+directories. Then run:
+
+```bash
+make superset
+```
+
+The command builds Superset directly from the fork, starts a disposable light
+stack, loads the bundled World Bank example, enables the `EMBEDDED_SUPERSET`
+feature, and permits the local Luma origins. It assigns the deterministic
+embedded dashboard UUID used by the controller's Docker defaults. The bootstrap
+includes a runtime-only compatibility copy for the broken World Bank example
+path on current `master`; the forked source remains unchanged so that failure
+can be reproduced and remediated by the automation. The demo compose
+intentionally uses no persistent volumes, so every run is reproducible and
+leaves no hidden dashboard state. Start the Dockerized Luma app after bootstrap:
+
+```bash
+docker compose up --build
+```
+
+Superset is available at [http://localhost:9001](http://localhost:9001) with
+the local demo credentials `admin` / `admin`. Dockerized Luma is available at
+[http://localhost:3000](http://localhost:3000). For frontend development,
+`make controller` and `make web` serve Luma at
+[http://localhost:5173](http://localhost:5173).
+
+Set `SUPERSET_REPO=/absolute/path/to/superset` when the repositories are not
+siblings.
+
+## Connect a different embedded Superset dashboard
 
 1. Start a Superset instance and enable the `EMBEDDED_SUPERSET` feature flag.
 2. In Superset, enable embedding for the selected dashboard and allow

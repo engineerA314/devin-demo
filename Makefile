@@ -1,4 +1,4 @@
-.PHONY: up down logs build web controller
+.PHONY: up down logs build web controller superset
 
 up:
 	docker compose up --build
@@ -17,3 +17,6 @@ web:
 
 controller:
 	cd apps/controller && uvicorn app.main:app --reload --port 8000
+
+superset:
+	./scripts/start_local_superset.sh

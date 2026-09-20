@@ -23,9 +23,13 @@ class SupersetGuestTokenClient:
         try:
             async with httpx.AsyncClient(base_url=base_url, timeout=timeout) as client:
                 access_token = await self._login(client)
+                csrf_token = await self._csrf_token(client, access_token)
                 response = await client.post(
                     "/api/v1/security/guest_token/",
-                    headers={"Authorization": f"Bearer {access_token}"},
+                    headers={
+                        "Authorization": f"Bearer {access_token}",
+                        "X-CSRFToken": csrf_token,
+                    },
                     json={
                         "resources": [
                             {
@@ -80,6 +84,22 @@ class SupersetGuestTokenClient:
                 detail="Superset login response did not contain an access token.",
             )
         return str(access_token)
+
+    async def _csrf_token(
+        self, client: httpx.AsyncClient, access_token: str
+    ) -> str:
+        response = await client.get(
+            "/api/v1/security/csrf_token/",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        response.raise_for_status()
+        csrf_token = response.json().get("result")
+        if not csrf_token:
+            raise HTTPException(
+                status_code=502,
+                detail="Superset CSRF response did not contain a token.",
+            )
+        return str(csrf_token)
 
     @staticmethod
     def _error_detail(response: httpx.Response) -> str:
