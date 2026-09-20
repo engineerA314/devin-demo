@@ -10,19 +10,34 @@ class GitHubReadClient:
         self.settings = settings
 
     async def list_incident_issues(self) -> list[dict[str, Any]]:
-        return await self._list(
+        issues = await self._list(
             "issues",
             {
                 "state": "all",
-                "labels": "incident-autopilot",
-                "per_page": 30,
+                "per_page": 100,
+                "sort": "created",
+                "direction": "desc",
             },
         )
+        managed_labels = {
+            "incident-autopilot",
+            "devin-ready",
+            self.settings.github_managed_label.lower(),
+        }
+        return [
+            issue
+            for issue in issues
+            if managed_labels
+            & {
+                str(label.get("name", "")).lower()
+                for label in issue.get("labels", [])
+            }
+        ]
 
     async def list_pull_requests(self) -> list[dict[str, Any]]:
         return await self._list(
             "pulls",
-            {"state": "all", "per_page": 30, "sort": "created", "direction": "desc"},
+            {"state": "all", "per_page": 100, "sort": "created", "direction": "desc"},
         )
 
     async def _list(
@@ -38,12 +53,19 @@ class GitHubReadClient:
         async with httpx.AsyncClient(
             base_url="https://api.github.com", headers=headers, timeout=20.0
         ) as client:
-            response = await client.get(
-                f"/repos/{self.settings.github_repository}/{resource}",
-                params=params,
-            )
-            response.raise_for_status()
-            items = response.json()
+            items: list[dict[str, Any]] = []
+            page = 1
+            while True:
+                response = await client.get(
+                    f"/repos/{self.settings.github_repository}/{resource}",
+                    params={**params, "page": page},
+                )
+                response.raise_for_status()
+                batch = response.json()
+                items.extend(batch)
+                if len(batch) < int(params.get("per_page", 100)):
+                    break
+                page += 1
             if resource == "issues":
                 return [item for item in items if "pull_request" not in item]
             return items

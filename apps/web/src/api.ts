@@ -9,6 +9,8 @@ export type OperationsOverview = {
     devin: boolean
     triageWebhook: boolean
     repository: string
+    dispatchMode: string
+    managedIssueLabel: string
   }
   metrics: {
     incidents: number
@@ -34,18 +36,7 @@ export type OperationsOverview = {
     detail: string
   }>
   runs: ResolutionRun[]
-  incidents: Array<{
-    id: string
-    title: string
-    service: string
-    severity: string
-    status: string
-    detected_at: string
-    error_rate: number
-    p95_latency_ms: number
-    affected_sessions: number
-    error_detail?: string
-  }>
+  incidents: Array<Record<string, unknown>>
   automations: Array<{
     id: string
     name: string
@@ -112,6 +103,10 @@ export type PullRequestArtifact = {
 
 export type ResolutionRun = {
   id: string
+  sourceType: 'alert' | 'issue'
+  sourceName: string
+  repository: string
+  externalEventId: string
   title: string
   service: string
   severity: string
@@ -132,11 +127,7 @@ export type ResolutionRun = {
   completedAt?: string
   elapsedSeconds?: number
   humanAction: string
-  signals: {
-    errorRate: number
-    p95LatencyMs: number
-    affectedSessions: number
-  }
+  signals: AlertSignal[]
   durations: {
     toIssueSeconds?: number
     toPrSeconds?: number
@@ -174,7 +165,39 @@ export type ResolutionRun = {
   remediationSession?: SessionArtifact
   issue?: IssueArtifact
   pullRequest?: PullRequestArtifact
+  dispatch: {
+    triage: string
+    remediation: string
+  }
   errorDetail?: string
+}
+
+export type AlertSignal = {
+  key: string
+  label: string
+  value: string | number
+  unit?: string | null
+}
+
+export type AlertPayload = {
+  event_id: string
+  source: string
+  repository?: string
+  title: string
+  service: string
+  severity: 'SEV-0' | 'SEV-1' | 'SEV-2' | 'SEV-3' | 'SEV-4'
+  occurred_at: string
+  signals: AlertSignal[]
+  evidence: Record<string, unknown>
+  metadata: Record<string, unknown>
+}
+
+export type AlertAccepted = {
+  id: string
+  status: string
+  duplicate: boolean
+  session_id?: string
+  session_url?: string
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -208,5 +231,13 @@ export function triggerDemoIncident(): Promise<{ id: string; status: string }> {
   return request<{ id: string; status: string }>('/api/incidents/demo', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+export function triggerAlert(payload: AlertPayload): Promise<AlertAccepted> {
+  return request<AlertAccepted>('/api/v1/alerts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
   })
 }

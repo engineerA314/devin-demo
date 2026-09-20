@@ -1,8 +1,9 @@
 # Five-minute Loom runbook
 
 Target length: **4:35**. Record at 1440p with the browser zoom around 90%.
-Keep these tabs ready: Luma dashboard, Incident Autopilot, Signal Lab, Devin Automations,
-triage session, remediation session, GitHub issue #1, and GitHub PR #2.
+Keep these tabs ready: Luma dashboard, Incident Autopilot, Signal Lab, a Devin
+triage session, a remediation session, GitHub issue #1, GitHub PR #2, and
+`docs/architecture.md`.
 
 ## 0:00–0:40 — What: customer impact
 
@@ -24,23 +25,25 @@ triage session, remediation session, GitHub issue #1, and GitHub PR #2.
 
 ## 0:40–1:25 — How: trigger and architecture
 
-**Screen:** Open the separate Incident Signal Lab URL, then click **Dispatch incident** only
+**Screen:** Open the separate Incident Signal Lab URL, edit one metric, then click **Dispatch alert** only
 if a fresh run is desired. For the final recording, the completed incident can
 be shown without generating a duplicate issue.
 
 > A real customer would connect Datadog, Better Stack, or another monitor. This
-> button sends the same webhook shape: service, severity, error rate, latency,
-> affected sessions, monitor threshold, and the proposed explanation. The
-> controller persists the incident, then calls a signed native Devin Automation
-> webhook. It does not directly tell GitHub what code to change.
+> form sends a vendor-neutral alert envelope: a source event ID, service,
+> severity, arbitrary metrics, and evidence. The controller rejects the wrong
+> repository, deduplicates the event, atomically claims one dispatch, and calls
+> Devin's session API. The returned session ID is stored before any issue or PR
+> exists.
 
 **Screen:** README Mermaid diagram or automation provisioning code.
 
 > I split the workflow into two independent agents. The first Devin validates
-> the alert and creates an evidence-backed issue. The `devin-ready` label is the
-> handoff contract and triggers a second, GitHub-event-driven Automation that
-> implements and verifies the fix. Both run in a prebuilt Superset cloud
-> environment created through the Devin API.
+> the alert and creates an evidence-backed issue. The `autopilot-managed` label
+> admits that issue to the second stage through a signed GitHub webhook, with
+> periodic reconciliation as recovery. The controller creates a fresh
+> remediation session and stores that session ID too. Both run in Devin Cloud
+> against the connected Superset fork.
 
 ## 1:25–2:15 — Triage Devin
 
@@ -58,8 +61,9 @@ then open issue #1.
 
 **Screen:** Remediation session timeline and its changes, then PR #2.
 
-> Applying `devin-ready` emitted a GitHub issue event and automatically started
-> a fresh remediation session. Devin independently reproduced the behavior,
+> In this recorded proof, the earlier native Automation started remediation
+> from `devin-ready`; the productionized controller now performs the same
+> handoff with an explicit API session ID and `autopilot-managed`. Devin independently reproduced the behavior,
 > added equal-jitter exponential backoff with a five-minute cap, reset the
 > backoff after recovery, and preserved unmount cancellation. It added fleet,
 > backoff, reset, cancellation, and helper tests, updated the embedding docs,
@@ -83,15 +87,19 @@ then open issue #1.
 > the ticket shows a resolution report compiled from Devin's triage and
 > remediation artifacts: customer impact, investigation, reproduction, root
 > cause, fix, verification, and rollout risk. The backend joins a durable
-> SQLite incident log with live Devin Automation and session APIs plus GitHub
-> artifacts every five seconds.
+> SQLite workflow log with live Devin sessions and GitHub artifacts. Frequent
+> browser refreshes read a cached snapshot while one background reconciler owns
+> external API pressure.
 
-**Screen:** `scripts/provision_devin.py`, briefly show limits and prompts.
+**Screen:** `docs/architecture.md`, briefly show the invariants and tests.
 
-> The operating controls are also code: per-session ACU budgets, hourly rate
-> limits, concurrency and queue caps, explicit triage and remediation scopes,
-> and no autonomous merge. The environment and both native Automations are
-> reproducible from the public Docker project.
+> The important scaling decision is explicit correlation. Every session has a
+> unique run tag, every issue and PR has a machine-readable run marker, and the
+> database stores each artifact ID. There is no nearest-timestamp matching.
+> SQLite WAL and an atomic dispatch lease give eight simultaneous callers one
+> winner, which the test suite verifies. Duplicate alert and GitHub deliveries
+> are idempotent. Prompts treat external text as untrusted, sessions have stage
+> ACU limits and structured outputs, and merge remains manual.
 
 ## 4:05–4:35 — Why Devin, and when to extend
 

@@ -1,15 +1,36 @@
-from typing import Any
+from __future__ import annotations
 
-from fastapi import FastAPI
+import asyncio
+import hashlib
+import hmac
+import json
+from contextlib import asynccontextmanager, suppress
+from typing import Any, Optional
+
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
+from .models import AlertAccepted, AlertEnvelope
 from .operations import OperationsService
 from .superset import SupersetGuestTokenClient
 
 settings = get_settings()
-app = FastAPI(title=settings.app_name, version="0.1.0")
 operations = OperationsService(settings)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    task = asyncio.create_task(operations.run_reconciler())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(title=settings.app_name, version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,3 +73,56 @@ async def operations_overview() -> dict[str, Any]:
 @app.post("/api/incidents/demo")
 async def trigger_demo_incident() -> dict[str, Any]:
     return await operations.trigger_demo_incident()
+
+
+@app.post("/api/v1/alerts", response_model=AlertAccepted)
+async def ingest_alert(alert: AlertEnvelope) -> dict[str, Any]:
+    if alert.repository and alert.repository != settings.github_repository:
+        raise HTTPException(
+            status_code=422,
+            detail=f"repository must be {settings.github_repository}",
+        )
+    payload = alert.model_dump(mode="json")
+    if len(json.dumps(payload, ensure_ascii=False).encode()) > 65_536:
+        raise HTTPException(status_code=413, detail="alert payload exceeds 64 KiB")
+    return await operations.ingest_alert(payload)
+
+
+@app.post("/api/v1/webhooks/github")
+async def github_webhook(
+    request: Request,
+    x_github_event: Optional[str] = Header(default=None),
+    x_github_delivery: Optional[str] = Header(default=None),
+    x_hub_signature_256: Optional[str] = Header(default=None),
+) -> dict[str, Any]:
+    body = await request.body()
+    if not settings.github_webhook_secret:
+        raise HTTPException(status_code=503, detail="GitHub webhook secret is not configured")
+    expected = "sha256=" + hmac.new(
+        settings.github_webhook_secret.encode(), body, hashlib.sha256
+    ).hexdigest()
+    if not x_hub_signature_256 or not hmac.compare_digest(
+        expected, x_hub_signature_256
+    ):
+        raise HTTPException(status_code=401, detail="invalid GitHub signature")
+    if x_github_event != "issues":
+        return {"accepted": False, "reason": "event ignored"}
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError as error:
+        raise HTTPException(status_code=400, detail="invalid JSON payload") from error
+    if payload.get("action") not in {"opened", "reopened", "labeled"}:
+        return {"accepted": False, "reason": "action ignored"}
+    repository = (payload.get("repository") or {}).get("full_name")
+    issue = payload.get("issue")
+    if not repository or not issue:
+        raise HTTPException(status_code=422, detail="missing repository or issue")
+    labels = {
+        str(label.get("name", "")).lower()
+        for label in issue.get("labels", [])
+        if isinstance(label, dict)
+    }
+    if settings.github_managed_label.lower() not in labels:
+        return {"accepted": False, "reason": "issue is outside the admission policy"}
+    result = await operations.ingest_github_issue(issue, repository)
+    return {"accepted": True, "delivery": x_github_delivery, **result}
