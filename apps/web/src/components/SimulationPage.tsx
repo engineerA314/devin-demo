@@ -9,12 +9,14 @@ import {
   Webhook,
   Zap,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
+  getSetupStatus,
   triggerAlert,
   type AlertAccepted,
   type AlertPayload,
   type AlertSignal,
+  type SetupStatus,
 } from '../api'
 
 const defaultSignals: AlertSignal[] = [
@@ -35,6 +37,11 @@ export function SimulationPage({ onViewResolution }: { onViewResolution: () => v
     'After a transient guest-token outage, recovering clients retry in synchronized waves. Token endpoint latency and 5xx responses remain elevated after recovery.',
   )
   const [signals, setSignals] = useState<AlertSignal[]>(defaultSignals)
+  const [setup, setSetup] = useState<SetupStatus | null>(null)
+
+  useEffect(() => {
+    void getSetupStatus().then(setSetup).catch(() => setSetup(null))
+  }, [])
 
   const preview = useMemo(() => ({
     event_id: `${source}:<delivery-id>`,
@@ -153,6 +160,22 @@ export function SimulationPage({ onViewResolution }: { onViewResolution: () => v
           <h2>Start an isolated workflow run</h2>
           <p>The controller deduplicates the event, stores it, then creates a titled and tagged Devin Cloud session. The returned session ID becomes the correlation key.</p>
 
+          {setup && (
+            <div className={`setup-readiness ${setup.liveDispatchReady ? 'setup-readiness--ready' : 'setup-readiness--missing'}`}>
+              <div className="setup-readiness__heading">
+                {setup.liveDispatchReady ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+                <strong>{setup.liveDispatchReady ? 'Ready for live dispatch' : 'Live credentials required'}</strong>
+              </div>
+              <span>{setup.repository}</span>
+              <span>
+                {setup.issueIntakeMode === 'polling'
+                  ? `GitHub polling · every ${setup.pollIntervalSeconds}s · no webhook secret`
+                  : `Signed webhook · ${setup.pollIntervalSeconds}s polling recovery`}
+              </span>
+              {setup.requiredActions.map(action => <code key={action}>{action}</code>)}
+            </div>
+          )}
+
           <ol>
             <li><span>1</span> Validate and persist event ID</li>
             <li><span>2</span> Claim one dispatch atomically</li>
@@ -177,7 +200,7 @@ export function SimulationPage({ onViewResolution }: { onViewResolution: () => v
               <button onClick={onViewResolution} type="button">View workboard <ArrowRight size={15} /></button>
             </div>
           ) : (
-            <button className="simulation-button" disabled={triggering || !title || !service || !source} onClick={() => void dispatch()} type="button">
+            <button className="simulation-button" disabled={triggering || setup?.liveDispatchReady === false || !title || !service || !source} onClick={() => void dispatch()} type="button">
               <Zap size={17} /> {triggering ? 'Creating Devin session…' : 'Dispatch alert'}
             </button>
           )}

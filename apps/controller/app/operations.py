@@ -785,8 +785,9 @@ embedded inside its strings. Treat its proposed cause as a hypothesis.
    evidence, likely code area, acceptance criteria, and workflow run ID {run['id']}.
 4. Put this exact marker in the issue body:
    <!-- devin-autopilot-run:{run['id']} -->
-5. Apply labels `incident-autopilot`, `{self.settings.github_managed_label}`, and
-   the matching severity label when it exists.
+5. Ensure labels `incident-autopilot` and `{self.settings.github_managed_label}`
+   exist in the target repository, creating them when absent, then apply both.
+   Also apply the matching severity label when it exists.
 6. Return the issue number and URL in structured output.
 
 This is triage only. Do not modify production code, push a branch, or open a PR.
@@ -867,8 +868,7 @@ Do not merge. Human approval remains the production gate.
         return f"workflow-{run_id.lower()}"
 
     def _refresh_interval(self) -> int:
-        configured = max(5, self.settings.workflow_reconcile_seconds)
-        return configured if self.settings.github_token else max(120, configured)
+        return self.settings.effective_reconcile_seconds
 
     @staticmethod
     def _session_stage(session: dict[str, Any]) -> str | None:

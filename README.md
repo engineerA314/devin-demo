@@ -109,12 +109,16 @@ documented in [`docs/architecture.md`](docs/architecture.md).
 - **Local Superset:** a script that builds and starts the fork with an embedded
   World Bank dashboard
 
-## Quick start in preview mode
+## Quick start: clone and run
 
-Preview mode renders the three demo surfaces on separate URLs without requiring
-Superset credentials.
+The default path needs Docker only. It starts the control plane, a persistent
+workflow store, the operations console, the signal simulator, and a customer
+dashboard preview. It does not require a GitHub webhook or a local Superset
+checkout.
 
 ```bash
+git clone https://github.com/engineerA314/devin-demo.git
+cd devin-demo
 cp .env.example .env
 docker compose up --build
 ```
@@ -124,50 +128,76 @@ docker compose up --build
 - Alert event generator: [http://localhost:3000/incident-simulator](http://localhost:3000/incident-simulator)
 
 The controller health endpoint is [http://localhost:8000/health](http://localhost:8000/health).
+Without Devin credentials, every surface still renders and the simulator shows
+the exact missing configuration instead of dispatching a partial workflow.
 
-Without Devin credentials, the resolution console remains read-only.
-
-## Connect Devin Cloud
+## Reproduce the live workflow without a GitHub webhook
 
 ### Prerequisites
 
-1. Connect the GitHub account that owns the Superset fork in Devin.
-2. Give the Devin GitHub connection access to `engineerA314/superset`.
+1. Fork Apache Superset, or use a fork that your Devin GitHub connection can
+   write to.
+2. Give the Devin GitHub connection access to that fork.
 3. Enable GitHub Issues on the fork.
 4. Create a Devin service user with `ManageOrgSessions` and `ViewOrgSessions`,
    generate its `cog_...` key, and copy the organization ID.
 
-Set the following values in the ignored `.env` file:
+Set the following values in the ignored `.env` file. Leave
+`GITHUB_WEBHOOK_SECRET` empty:
 
 ```dotenv
 DEVIN_API_KEY=cog_...
 DEVIN_ORG_ID=...
-GITHUB_REPOSITORY=engineerA314/superset
-GITHUB_TOKEN=github_pat_...
+GITHUB_REPOSITORY=your-account/superset
+GITHUB_TOKEN=
+GITHUB_WEBHOOK_SECRET=
 ```
 
-Provision the reusable cloud environment:
+The GitHub token is optional for a public fork. Adding a read token enables
+20-second reconciliation; anonymous public-repository polling uses a safer
+120-second interval. For a private fork, the token is required. Devin creates
+issues and PRs through its own connected GitHub account, not this read token.
+
+Start the stack and run the credential and repository preflight from the same
+Docker image:
+
+```bash
+docker compose up --build -d
+make doctor
+```
+
+Expected final output:
+
+```text
+[PASS] Devin Cloud: session API is reachable
+[PASS] GitHub repository: your-account/superset is reachable (public)
+[WARN] Issue reconciliation: anonymous polling works ...
+[INFO] GitHub event delivery: polling mode; GITHUB_WEBHOOK_SECRET is not required
+
+Live alert dispatch is ready. Open http://localhost:3000/incident-simulator
+```
+
+Open the simulator, choose **Dispatch alert**, and then open the workboard. The
+controller immediately creates the triage session through the Devin API. When
+that Devin creates a managed GitHub issue, polling discovers it and starts the
+remediation session. No inbound public URL is necessary.
+
+The controller creates titled, tagged sessions directly with the Devin API and
+stores the returned session ID before tracking downstream artifacts. Triage is
+also instructed to create the two workflow labels when the target fork does not
+already contain them.
+
+Building a reusable Devin environment is an optional speed optimization and is
+also Dockerized:
 
 ```bash
 make provision-devin-environment
 ```
 
-The controller creates titled, tagged sessions directly with the Devin API, so
-it stores the returned session ID before tracking any downstream artifact.
-Restart the controller after configuration:
-
-```bash
-docker compose up --build
-```
-
-`GITHUB_TOKEN` is recommended for fast reconciliation and required for private
-forks. Without it, polling backs off to protect GitHub's anonymous rate limit.
-Devin creates issues and PRs through its own connected GitHub account.
-
 For push-based issue intake, point a GitHub Issues webhook at
 `POST /api/v1/webhooks/github`, set `GITHUB_WEBHOOK_SECRET`, and subscribe to
-issue events. The HMAC signature is mandatory. Periodic GitHub reconciliation
-continues as a missed-webhook recovery path.
+issue events. This is optional. The HMAC signature is mandatory when enabled,
+and periodic reconciliation remains the missed-webhook recovery path.
 
 ## Run the Apache Superset fork
 
@@ -182,6 +212,16 @@ The command builds Superset from the fork, starts a disposable light stack,
 loads the World Bank example, enables `EMBEDDED_SUPERSET`, and permits the local
 Luma origins. It assigns the deterministic embedded dashboard UUID used by the
 controller defaults.
+
+After Superset starts, opt into the real embedded dashboard by setting:
+
+```dotenv
+SUPERSET_INTERNAL_URL=http://host.docker.internal:9001
+SUPERSET_PUBLIC_URL=http://localhost:9001
+SUPERSET_DASHBOARD_ID=00000000-0000-4000-8000-000000000001
+SUPERSET_USERNAME=admin
+SUPERSET_PASSWORD=admin
+```
 
 The bootstrap includes a runtime-only compatibility copy for a broken World
 Bank example path on current `master`. The forked source remains unchanged, so

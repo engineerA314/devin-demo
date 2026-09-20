@@ -46,6 +46,72 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/api/v1/setup/status")
+async def setup_status() -> dict[str, Any]:
+    """Describe live-demo readiness without exposing credential values."""
+    required_actions: list[str] = []
+    if not settings.devin_api_key:
+        required_actions.append("Set DEVIN_API_KEY in .env")
+    if not settings.devin_org_id:
+        required_actions.append("Set DEVIN_ORG_ID in .env")
+
+    github_detail = (
+        f"Authenticated reconciliation every {settings.effective_reconcile_seconds}s"
+        if settings.github_token
+        else (
+            "Anonymous public-repository reconciliation every "
+            f"{settings.effective_reconcile_seconds}s"
+        )
+    )
+    intake_detail = (
+        "Signed GitHub issue events with polling recovery"
+        if settings.github_webhook_secret
+        else "No webhook required; polling detects managed GitHub issues"
+    )
+    return {
+        "liveDispatchReady": settings.devin_configured,
+        "repository": settings.github_repository,
+        "dispatchMode": "direct-session-api",
+        "issueIntakeMode": settings.issue_intake_mode,
+        "pollIntervalSeconds": settings.effective_reconcile_seconds,
+        "checks": [
+            {
+                "key": "controller",
+                "status": "ready",
+                "label": "Controller",
+                "detail": "Durable workflow store online",
+                "required": True,
+            },
+            {
+                "key": "devin",
+                "status": "ready" if settings.devin_configured else "missing",
+                "label": "Devin Cloud",
+                "detail": (
+                    "Direct session API configured"
+                    if settings.devin_configured
+                    else "DEVIN_API_KEY and DEVIN_ORG_ID are required"
+                ),
+                "required": True,
+            },
+            {
+                "key": "github",
+                "status": "ready" if settings.github_token else "optional",
+                "label": "GitHub reconciliation",
+                "detail": github_detail,
+                "required": False,
+            },
+            {
+                "key": "webhook",
+                "status": "ready" if settings.github_webhook_secret else "optional",
+                "label": "GitHub webhook",
+                "detail": intake_detail,
+                "required": False,
+            },
+        ],
+        "requiredActions": required_actions,
+    }
+
+
 @app.get("/api/config")
 async def embed_config() -> dict[str, str]:
     if not settings.embedded_superset_configured:

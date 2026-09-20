@@ -200,6 +200,22 @@ export type AlertAccepted = {
   session_url?: string
 }
 
+export type SetupStatus = {
+  liveDispatchReady: boolean
+  repository: string
+  dispatchMode: string
+  issueIntakeMode: string
+  pollIntervalSeconds: number
+  checks: Array<{
+    key: string
+    status: 'ready' | 'missing' | 'optional'
+    label: string
+    detail: string
+    required: boolean
+  }>
+  requiredActions: string[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -225,6 +241,10 @@ export async function fetchGuestToken(): Promise<string> {
 
 export function getOperationsOverview(): Promise<OperationsOverview> {
   return request<OperationsOverview>('/api/operations/overview')
+}
+
+export function getSetupStatus(): Promise<SetupStatus> {
+  return request<SetupStatus>('/api/v1/setup/status')
 }
 
 export function triggerDemoIncident(): Promise<{ id: string; status: string }> {

@@ -40,6 +40,28 @@ def issue(number: int, run_id: str | None = None) -> dict:
     }
 
 
+class SetupModeTests(unittest.TestCase):
+    def test_public_fork_without_secrets_uses_safe_polling(self) -> None:
+        settings = Settings(_env_file=None, workflow_reconcile_seconds=20)
+
+        self.assertEqual("polling", settings.issue_intake_mode)
+        self.assertEqual(120, settings.effective_reconcile_seconds)
+
+    def test_authenticated_webhook_mode_keeps_polling_as_recovery(self) -> None:
+        settings = Settings(
+            _env_file=None,
+            github_token="read-token",
+            github_webhook_secret="shared-secret",
+            workflow_reconcile_seconds=20,
+        )
+
+        self.assertEqual(
+            "signed-webhook-with-polling-recovery",
+            settings.issue_intake_mode,
+        )
+        self.assertEqual(20, settings.effective_reconcile_seconds)
+
+
 class WorkflowStoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()

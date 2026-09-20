@@ -63,6 +63,16 @@ class Settings(BaseSettings):
     def triage_webhook_configured(self) -> bool:
         return bool(self.devin_triage_webhook_url and self.devin_triage_webhook_secret)
 
+    @property
+    def effective_reconcile_seconds(self) -> int:
+        """Use a faster poll only when GitHub's authenticated quota is available."""
+        configured = max(5, self.workflow_reconcile_seconds)
+        return configured if self.github_token else max(120, configured)
+
+    @property
+    def issue_intake_mode(self) -> str:
+        return "signed-webhook-with-polling-recovery" if self.github_webhook_secret else "polling"
+
 
 @lru_cache
 def get_settings() -> Settings:

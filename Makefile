@@ -1,4 +1,4 @@
-.PHONY: up down logs build web controller superset provision-devin provision-devin-environment
+.PHONY: up down logs build doctor web controller superset provision-devin provision-devin-environment
 
 up:
 	docker compose up --build
@@ -12,6 +12,9 @@ logs:
 build:
 	docker compose build
 
+doctor:
+	docker compose run --rm --build controller python -m app.doctor
+
 web:
 	cd apps/web && npm run dev
 
@@ -22,7 +25,9 @@ superset:
 	./scripts/start_local_superset.sh
 
 provision-devin:
-	apps/controller/.venv/bin/python scripts/provision_devin.py
+	docker compose run --rm --build -v "$(CURDIR):/workspace" controller \
+		python /workspace/scripts/provision_devin.py
 
 provision-devin-environment:
-	apps/controller/.venv/bin/python scripts/provision_devin_environment.py
+	docker compose run --rm --build -v "$(CURDIR):/workspace" controller \
+		python /workspace/scripts/provision_devin_environment.py
