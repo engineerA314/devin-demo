@@ -49,6 +49,7 @@ button {
   display: flex;
   gap: 11px;
   padding: 0 8px 25px;
+  text-decoration: none;
 }
 
 .brand__mark {
@@ -155,7 +156,18 @@ button {
   gap: 11px;
   padding: 10px 11px;
   text-align: left;
+  text-decoration: none;
   width: 100%;
+}
+
+.navigation__item--disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.navigation__item--disabled:hover {
+  background: transparent;
+  color: #d0e1da;
 }
 
 .navigation__item:hover {
@@ -2207,6 +2219,125 @@ button {
   }
 }
 
+/* Standalone Incident Autopilot and signal simulator */
+
+.product-shell {
+  background: #f6f8f7;
+  min-height: 100vh;
+}
+
+.product-header {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #e2e7e4;
+  display: flex;
+  height: 68px;
+  justify-content: space-between;
+  padding: 0 30px;
+  position: sticky;
+  top: 0;
+  z-index: 12;
+}
+
+.product-brand {
+  align-items: center;
+  color: #1a2922;
+  display: flex;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.product-brand > span {
+  align-items: center;
+  background: #123f31;
+  border-radius: 9px;
+  color: #7de0ac;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.product-brand > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-brand strong {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.025em;
+}
+
+.product-brand small {
+  color: #738078;
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  margin-top: 2px;
+  text-transform: uppercase;
+}
+
+.product-header__actions {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.product-system-status {
+  align-items: center;
+  color: #647169;
+  display: flex;
+  font-size: 9px;
+  gap: 6px;
+}
+
+.product-system-status i {
+  background: #20a66a;
+  border-radius: 50%;
+  height: 6px;
+  width: 6px;
+}
+
+.product-utility-link {
+  align-items: center;
+  background: #f0f4f2;
+  border: 1px solid #e0e6e3;
+  border-radius: 7px;
+  color: #405148;
+  display: flex;
+  font-size: 9px;
+  font-weight: 650;
+  gap: 6px;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.product-utility-link:hover {
+  background: #e8f2ed;
+  border-color: #cbdcd3;
+  color: #0b6443;
+}
+
+.product-main {
+  min-height: calc(100vh - 68px);
+}
+
+.product-header--simulator .product-brand > span {
+  background: #172b42;
+  color: #8bc6ff;
+}
+
+.product-shell--simulator {
+  background:
+    radial-gradient(circle at 12% 5%, rgba(80, 133, 217, 0.12), transparent 28%),
+    #f6f8fa;
+}
+
+.simulator-main {
+  min-height: calc(100vh - 68px);
+}
+
 /* Incident workboard */
 
 .workboard-page,
@@ -3074,6 +3205,10 @@ button {
 }
 
 @media (max-width: 620px) {
+  .product-header { padding: 0 16px; }
+  .product-system-status { display: none; }
+  .product-utility-link { font-size: 0; padding: 8px; }
+  .product-utility-link svg { height: 17px; width: 17px; }
   .workboard-heading,
   .workboard-toolbar { align-items: stretch; flex-direction: column; gap: 10px; }
   .workboard-summary { grid-template-columns: repeat(2, 1fr); }
