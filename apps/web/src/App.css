@@ -2161,6 +2161,50 @@ button {
   margin: 10px 0 18px;
 }
 
+.setup-readiness {
+  background: #f5f7f6;
+  border: 1px solid #dce3df;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px 0 18px;
+  padding: 10px 11px;
+}
+
+.setup-readiness--ready {
+  background: #eef9f3;
+  border-color: #cbe9d8;
+}
+
+.setup-readiness--missing {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.setup-readiness__heading {
+  align-items: center;
+  color: #0b4a36;
+  display: flex;
+  font-size: 10px;
+  gap: 6px;
+}
+
+.setup-readiness--missing .setup-readiness__heading {
+  color: #9a3412;
+}
+
+.setup-readiness > span {
+  color: #66736c;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.setup-readiness > code {
+  color: #9a3412;
+  font-size: 8px;
+}
+
 .simulation-dispatch ol {
   display: flex;
   flex-direction: column;
