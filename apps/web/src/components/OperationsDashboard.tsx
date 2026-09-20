@@ -1,22 +1,24 @@
 import {
-  Activity,
   AlertTriangle,
   Bot,
   CheckCircle2,
+  ChevronRight,
   CircleDot,
-  Clock3,
+  Code2,
   ExternalLink,
+  FileCheck2,
+  FileText,
   GitPullRequest,
   RefreshCw,
-  ShieldCheck,
-  Webhook,
-  Zap,
+  ServerCog,
+  TestTube2,
+  Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   getOperationsOverview,
-  triggerDemoIncident,
   type OperationsOverview,
+  type ResolutionRun,
 } from '../api'
 
 const refreshIntervalMs = 5_000
@@ -24,14 +26,13 @@ const refreshIntervalMs = 5_000
 export function OperationsDashboard() {
   const [overview, setOverview] = useState<OperationsOverview | null>(null)
   const [loading, setLoading] = useState(true)
-  const [triggering, setTriggering] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     try {
       const next = await getOperationsOverview()
       setOverview(next)
-      setError(next.warnings[0] ?? null)
+      setError(next.warnings.length ? next.warnings.join(' · ') : null)
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : 'Unable to refresh')
     } finally {
@@ -40,326 +41,334 @@ export function OperationsDashboard() {
   }, [])
 
   useEffect(() => {
-    // The dashboard is a live read model; fetch immediately, then poll Devin.
+    // The page is a live read model; fetch immediately, then poll its sources.
     // oxlint-disable-next-line react/set-state-in-effect
     void refresh()
     const timer = window.setInterval(() => void refresh(), refreshIntervalMs)
     return () => window.clearInterval(timer)
   }, [refresh])
 
-  async function triggerIncident() {
-    setTriggering(true)
-    setError(null)
-    try {
-      const incident = await triggerDemoIncident()
-      if (incident.status === 'trigger_failed') {
-        throw new Error('Devin rejected the incident webhook. Check the automation.')
-      }
-      await refresh()
-    } catch (triggerError) {
-      setError(
-        triggerError instanceof Error ? triggerError.message : 'Unable to trigger incident',
-      )
-    } finally {
-      setTriggering(false)
-    }
-  }
-
-  const metrics = overview?.metrics
-  const isReady = overview?.configured.devin && overview.configured.triageWebhook
-  const pullRequests = Array.from(
-    new Map(
-      (overview?.sessions ?? [])
-        .flatMap(session => session.pullRequests)
-        .filter(pullRequest => pullRequest.pr_url)
-        .map(pullRequest => [pullRequest.pr_url, pullRequest]),
-    ).values(),
-  )
+  const run = overview?.runs[0]
 
   return (
-    <div className="ops-page">
-      <section className="ops-hero">
+    <div className="resolution-page">
+      <header className="resolution-heading">
         <div>
-          <div className="ops-hero__eyebrow">
-            <ShieldCheck size={14} /> Incident Autopilot
-          </div>
-          <h1>Production recovery, coordinated by Devin</h1>
-          <p>
-            Alerts become reproducible issues. Validated issues become tested pull
-            requests, with a human approval gate before merge.
-          </p>
+          <span>Incident resolution</span>
+          <h1>Autonomous recovery, ready for review</h1>
+          <p>From production alert to a verified pull request.</p>
         </div>
         <button
-          className="incident-button"
-          disabled={!isReady || triggering}
-          onClick={() => void triggerIncident()}
+          aria-label="Refresh resolution data"
+          className="resolution-refresh"
+          onClick={() => void refresh()}
           type="button"
         >
-          {triggering ? <RefreshCw className="spin" size={17} /> : <Zap size={17} />}
-          {triggering ? 'Dispatching alert' : 'Simulate production incident'}
+          <RefreshCw size={15} />
+          Live · 5s
         </button>
-      </section>
+      </header>
 
-      <div className={`control-status ${isReady ? 'control-status--ready' : ''}`}>
-        <span className="control-status__dot" />
-        <strong>{isReady ? 'Automation online' : 'Setup required'}</strong>
-        <span>
-          {overview?.configured.repository ?? 'engineerA314/superset'} · polling every 5s
-        </span>
-        <button onClick={() => void refresh()} type="button" aria-label="Refresh status">
-          <RefreshCw size={14} />
-        </button>
-      </div>
+      {error && <div className="resolution-error">{error}</div>}
 
-      {error && <div className="ops-error">{error}</div>}
+      {loading && !run ? (
+        <div className="resolution-empty"><RefreshCw className="spin" size={18} /> Loading resolution data…</div>
+      ) : run ? (
+        <>
+          <RunSummary run={run} overview={overview} />
 
-      <section className="ops-metrics" aria-label="Automation metrics">
-        <Metric label="Incidents" value={metrics?.incidents ?? 0} icon={AlertTriangle} />
-        <Metric label="Active Devins" value={metrics?.activeSessions ?? 0} icon={Bot} />
-        <Metric label="Pull requests" value={metrics?.pullRequests ?? 0} icon={GitPullRequest} />
-        <Metric
-          label="Success rate"
-          value={`${metrics?.successRate ?? 0}%`}
-          icon={CheckCircle2}
-        />
-        <Metric
-          label="Completed Devins"
-          value={metrics?.completedSessions ?? 0}
-          icon={Activity}
-        />
-      </section>
-
-      <section className="automation-flow" aria-labelledby="automation-flow-title">
-        <div className="section-heading">
-          <div>
-            <span>Native Devin workflow</span>
-            <h2 id="automation-flow-title">Two agents, one reviewable handoff</h2>
+          <div className="resolution-main-grid">
+            <ResolutionTimeline run={run} />
+            <ReviewPackage run={run} />
           </div>
-          <span className="live-badge"><CircleDot size={12} /> Live</span>
+
+          <EvidenceStrip run={run} />
+          <RecentRuns runs={overview?.runs ?? []} />
+          <HealthFooter overview={overview} />
+        </>
+      ) : (
+        <div className="resolution-empty">
+          <CircleDot size={18} /> No incident runs have been recorded yet.
         </div>
-        <div className="flow-grid">
-          <FlowStep
-            number="01"
-            title="Alert received"
-            description="A Datadog-compatible webhook carries the incident signal and evidence."
-            icon={Webhook}
-            state={overview?.incidents.length ? 'complete' : 'waiting'}
-          />
-          <FlowStep
-            number="02"
-            title="Triage Devin"
-            description="Reproduces or falsifies the alert, then creates a scoped GitHub issue."
-            icon={Bot}
-            state={sessionState(overview, 'incident-triage')}
-          />
-          <FlowStep
-            number="03"
-            title="Issue contract"
-            description="The devin-ready label dispatches a fresh remediation session."
-            icon={CircleDot}
-            state={overview?.issues.length ? 'complete' : 'waiting'}
-          />
-          <FlowStep
-            number="04"
-            title="Fix and verify"
-            description="A regression test, focused fix, CI evidence, and linked PR await approval."
-            icon={GitPullRequest}
-            state={sessionState(overview, 'incident-remediation')}
-          />
-        </div>
-      </section>
-
-      <div className="ops-grid">
-        <section className="ops-panel ops-panel--wide">
-          <div className="section-heading section-heading--compact">
-            <div>
-              <span>Response timeline</span>
-              <h2>Incidents</h2>
-            </div>
-          </div>
-          {loading ? (
-            <EmptyState copy="Loading incident history…" />
-          ) : overview?.incidents.length ? (
-            <div className="incident-list">
-              {overview.incidents.map(incident => (
-                <article className="incident-row" key={incident.id}>
-                  <span className="severity-badge">{incident.severity}</span>
-                  <div className="incident-row__main">
-                    <strong>{incident.title}</strong>
-                    <span>
-                      {incident.id} · {incident.service} · {formatDate(incident.detected_at)}
-                    </span>
-                  </div>
-                  <div className="incident-row__signal">
-                    <strong>{incident.error_rate}%</strong>
-                    <span>error rate</span>
-                  </div>
-                  <StatusBadge status={incident.status} />
-                </article>
-              ))}
-            </div>
-          ) : (
-            <EmptyState copy="No incidents dispatched yet." />
-          )}
-        </section>
-
-        <section className="ops-panel">
-          <div className="section-heading section-heading--compact">
-            <div>
-              <span>Cloud workers</span>
-              <h2>Devin sessions</h2>
-            </div>
-          </div>
-          {overview?.sessions.length ? (
-            <div className="resource-list">
-              {overview.sessions.map(session => (
-                <a
-                  className="resource-row"
-                  href={session.url}
-                  key={session.id}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span className="resource-row__icon"><Bot size={16} /></span>
-                  <span>
-                    <strong>{session.title || session.id}</strong>
-                    <small>
-                      {session.statusDetail || session.status}
-                      {session.acusConsumed > 0 ? ` · ${session.acusConsumed} ACU` : ''}
-                    </small>
-                  </span>
-                  <ExternalLink size={14} />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <EmptyState copy="Sessions appear here when the webhook fires." />
-          )}
-        </section>
-
-        <section className="ops-panel">
-          <div className="section-heading section-heading--compact">
-            <div>
-              <span>Engineering artifacts</span>
-              <h2>Issues and pull requests</h2>
-            </div>
-          </div>
-          {overview?.issues.length || pullRequests.length ? (
-            <div className="resource-list">
-              {(overview?.issues ?? []).map(issue => (
-                <a
-                  className="resource-row"
-                  href={issue.url}
-                  key={issue.number}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span className="resource-row__icon"><CircleDot size={16} /></span>
-                  <span>
-                    <strong>#{issue.number} {issue.title}</strong>
-                    <small>{issue.state} · {issue.labels.join(', ')}</small>
-                  </span>
-                  <ExternalLink size={14} />
-                </a>
-              ))}
-              {pullRequests.map(pullRequest => (
-                <a
-                  className="resource-row"
-                  href={pullRequest.pr_url}
-                  key={pullRequest.pr_url}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  <span className="resource-row__icon"><GitPullRequest size={16} /></span>
-                  <span>
-                    <strong>Remediation pull request</strong>
-                    <small>{pullRequest.pr_state || 'open'} · ready for review</small>
-                  </span>
-                  <ExternalLink size={14} />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <EmptyState copy="Validated issues and remediation PRs appear here." />
-          )}
-        </section>
-      </div>
+      )}
     </div>
   )
 }
 
-function Metric({
-  label,
-  value,
-  icon: Icon,
+function RunSummary({
+  run,
+  overview,
 }: {
-  label: string
-  value: number | string
-  icon: typeof Activity
+  run: ResolutionRun
+  overview: OperationsOverview | null
 }) {
   return (
-    <article className="ops-metric">
-      <span className="ops-metric__icon"><Icon size={16} /></span>
-      <div><span>{label}</span><strong>{value}</strong></div>
-    </article>
+    <section className="run-summary" aria-label="Current incident outcome">
+      <div className="run-summary__incident">
+        <span className="run-summary__alert"><AlertTriangle size={25} /></span>
+        <div>
+          <div className="run-summary__title-row">
+            <h2>{run.id} · {run.severity}</h2>
+            <OutcomeBadge outcome={run.outcome} />
+          </div>
+          <p>{run.title}</p>
+          <small>{formatDateTime(run.detectedAt)} · {run.service}</small>
+        </div>
+      </div>
+
+      <div className="run-summary__outcomes">
+        <OutcomeMetric
+          value={formatDuration(run.durations.toIssueSeconds)}
+          label="Alert → validated issue"
+        />
+        <OutcomeMetric
+          value={formatDuration(run.durations.toPrSeconds)}
+          label="Alert → pull request"
+        />
+        <div className="run-summary__facts">
+          <Fact value={run.verification.testsPassed ?? '—'} label="tests passed" />
+          <Fact value={String(overview?.summary.failedRuns ?? 0)} label="failed runs" />
+          <Fact value={String(overview?.summary.approvalPending ?? 0)} label="approval pending" />
+        </div>
+      </div>
+    </section>
   )
 }
 
-function FlowStep({
-  number,
-  title,
-  description,
-  icon: Icon,
-  state,
-}: {
-  number: string
-  title: string
-  description: string
-  icon: typeof Activity
-  state: 'waiting' | 'active' | 'complete' | 'failed'
-}) {
+function OutcomeMetric({ value, label }: { value: string; label: string }) {
   return (
-    <article className={`flow-step flow-step--${state}`}>
-      <div className="flow-step__top"><span>{number}</span><Icon size={18} /></div>
-      <strong>{title}</strong>
-      <p>{description}</p>
-      <StatusBadge status={state} />
-    </article>
+    <div className="outcome-metric">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
   )
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`stage-badge stage-badge--${status}`}>{humanize(status)}</span>
+function Fact({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="run-fact">
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  )
 }
 
-function EmptyState({ copy }: { copy: string }) {
-  return <div className="empty-state"><Clock3 size={17} /><span>{copy}</span></div>
+function ResolutionTimeline({ run }: { run: ResolutionRun }) {
+  return (
+    <section className="resolution-card timeline-card">
+      <div className="resolution-card__heading">
+        <h2>Resolution timeline</h2>
+        <span>Total time to PR: <strong>{formatDuration(run.durations.toPrSeconds)}</strong></span>
+      </div>
+      <div className="resolution-timeline">
+        {run.milestones.map((milestone, index) => {
+          const Icon = milestoneIcon(milestone.kind)
+          const content = (
+            <>
+              <time>{formatTime(milestone.occurredAt)}</time>
+              <span className={`timeline-icon timeline-icon--${milestone.kind}`}><Icon size={16} /></span>
+              <strong>{milestone.label}</strong>
+              <span className="timeline-elapsed">
+                {index === 0 ? '—' : formatDuration(milestone.elapsedSeconds)}
+              </span>
+              {milestone.url && <ExternalLink className="timeline-link-icon" size={13} />}
+            </>
+          )
+          return milestone.url ? (
+            <a className="timeline-row" href={milestone.url} key={`${milestone.kind}-${milestone.occurredAt}`} rel="noreferrer" target="_blank">
+              {content}
+            </a>
+          ) : (
+            <div className="timeline-row" key={`${milestone.kind}-${milestone.occurredAt}`}>
+              {content}
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 
-function sessionState(
-  overview: OperationsOverview | null,
-  tag: string,
-): 'waiting' | 'active' | 'complete' | 'failed' {
-  const session = overview?.sessions.find(item => item.tags.includes(tag))
-  if (!session) return 'waiting'
-  if (session.status === 'error') return 'failed'
-  if (
-    session.status === 'exit' ||
-    session.statusDetail === 'waiting_for_user' ||
-    session.statusDetail === 'finished'
-  ) return 'complete'
-  return 'active'
+function ReviewPackage({ run }: { run: ResolutionRun }) {
+  const artifacts = [
+    run.triageSession && {
+      label: 'Triage session',
+      detail: 'Devin analysis and reproduction',
+      url: run.triageSession.url,
+      icon: Bot,
+    },
+    run.issue && {
+      label: `Issue #${run.issue.number}`,
+      detail: 'Root cause and acceptance criteria',
+      url: run.issue.url,
+      icon: FileText,
+    },
+    run.pullRequest && {
+      label: `PR #${run.pullRequest.number}`,
+      detail: 'Proposed fix, tests, and rollout risk',
+      url: run.pullRequest.url,
+      icon: GitPullRequest,
+    },
+  ].filter(Boolean) as Array<{
+    label: string
+    detail: string
+    url: string
+    icon: typeof Bot
+  }>
+
+  return (
+    <aside className="resolution-card review-card">
+      <div className="resolution-card__heading resolution-card__heading--stacked">
+        <h2>Review package</h2>
+        <span>Artifacts from this run</span>
+      </div>
+      <div className="review-artifacts">
+        {artifacts.map(artifact => {
+          const Icon = artifact.icon
+          return (
+            <a href={artifact.url} key={artifact.label} rel="noreferrer" target="_blank">
+              <span><Icon size={17} /></span>
+              <div><strong>{artifact.label}</strong><small>{artifact.detail}</small></div>
+              <ExternalLink size={14} />
+            </a>
+          )
+        })}
+      </div>
+      {run.pullRequest && (
+        <a className="review-action" href={run.pullRequest.url} rel="noreferrer" target="_blank">
+          Review pull request <ChevronRight size={17} />
+        </a>
+      )}
+    </aside>
+  )
+}
+
+function EvidenceStrip({ run }: { run: ResolutionRun }) {
+  const icons = [Users, CircleDot, ServerCog, CheckCircle2]
+  return (
+    <section className="evidence-card">
+      <h2>Key evidence</h2>
+      <div>
+        {run.evidence.map((evidence, index) => {
+          const Icon = icons[index] ?? FileCheck2
+          return (
+            <article key={evidence.label}>
+              <span><Icon size={17} /></span>
+              <div><strong>{evidence.label}</strong><small>{evidence.detail}</small></div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function RecentRuns({ runs }: { runs: ResolutionRun[] }) {
+  return (
+    <section className="runs-card">
+      <div className="resolution-card__heading">
+        <h2>Recent resolution runs</h2>
+        <span>{runs.length} total</span>
+      </div>
+      <div className="runs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Incident</th>
+              <th>Service</th>
+              <th>Outcome</th>
+              <th>Time to issue</th>
+              <th>Time to PR</th>
+              <th>Human action</th>
+              <th>Completed at</th>
+            </tr>
+          </thead>
+          <tbody>
+            {runs.map(run => (
+              <tr key={run.id}>
+                <td><strong>{run.id}</strong></td>
+                <td>{run.service}</td>
+                <td><OutcomeBadge outcome={run.outcome} /></td>
+                <td>{formatDuration(run.durations.toIssueSeconds)}</td>
+                <td>{formatDuration(run.durations.toPrSeconds)}</td>
+                <td className="runs-table__action">{run.humanAction}</td>
+                <td>{run.completedAt ? formatDateTime(run.completedAt) : 'In progress'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {runs.length === 1 && <p className="runs-card__empty">No additional resolution runs yet.</p>}
+    </section>
+  )
+}
+
+function HealthFooter({ overview }: { overview: OperationsOverview | null }) {
+  return (
+    <footer className="resolution-health">
+      <div>
+        {(overview?.health ?? []).slice(0, 3).map(source => (
+          <span key={source.name} title={source.detail}>
+            <i className={`health-dot health-dot--${source.status}`} />
+            {source.name} <strong>{source.status === 'healthy' ? source.detail : 'Degraded'}</strong>
+          </span>
+        ))}
+      </div>
+      <span>Updated {relativeAge(overview?.generatedAt)} ago</span>
+    </footer>
+  )
+}
+
+function OutcomeBadge({ outcome }: { outcome: ResolutionRun['outcome'] }) {
+  return <span className={`outcome-badge outcome-badge--${outcome}`}>{humanize(outcome)}</span>
+}
+
+function milestoneIcon(kind: ResolutionRun['milestones'][number]['kind']) {
+  return {
+    alert: AlertTriangle,
+    agent: Bot,
+    issue: FileText,
+    code: Code2,
+    pull_request: GitPullRequest,
+    verified: TestTube2,
+  }[kind]
+}
+
+function formatDuration(seconds?: number): string {
+  if (seconds === undefined || seconds === null) return '—'
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainder = seconds % 60
+  return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).format(new Date(value))
+}
+
+function relativeAge(value?: string): string {
+  if (!value) return '—'
+  const seconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000))
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m`
 }
 
 function humanize(value: string): string {
   return value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase())
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
 }
